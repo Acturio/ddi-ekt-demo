@@ -1,4 +1,6 @@
 library(tidyverse)
+library(corrplot)
+library(heatmaply)
 
 fb <- read_csv("data/Historico_FB_Ads_Elektra_v2.csv",
                locale = locale(encoding = "UTF-8"))
@@ -48,11 +50,7 @@ fb_grouped <- fb %>%
     names_vary = "slowest"
   )
 
-gads_grouped %>% count(objetivo_ga)
-fb_grouped %>% count(objetivo_fb)
-
-
-full_join(
+full_data <- full_join(
   gads_grouped,
   fb_grouped,
   by = "dia"
@@ -63,7 +61,52 @@ full_join(
   select(-matches("conversiones_")) %>%
   rename_with(~str_replace_all(.x, c(" " = "_"))) %>%
   rename_with(~str_to_lower(.x)) %>%
+  select(-c(dia, matches("messages"), matches("lead_generation"),
+            matches("post_engagement"), matches("shopping"),
+            matches("rendimiento_máximo")))
+
+M = cor(full_data, use = "pairwise.complete.obs")
+
+M %>% .[,1] %>%
+  abs() %>% sort(decreasing = TRUE)
   glimpse()
+
+corrplot(M, method = 'number') # colorful number
+corrplot(M, method = 'color', order = 'alphabet')
+corrplot(M) # by default, method = 'circle'
+corrplot(M, order = 'AOE') # after 'AOE' reorder
+
+
+heatmaply_cor(
+  M,
+  xlab = "Features",
+  ylab = "Features",
+  scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+    low = "red",
+    high = "blue",
+    midpoint = 0,
+    limits = c(-1, 1)
+  ),
+  k_col = 2,
+  k_row = 2
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
