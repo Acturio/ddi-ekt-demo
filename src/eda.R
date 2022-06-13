@@ -1,8 +1,10 @@
 library(tidyverse)
 library(corrplot)
 library(heatmaply)
-#library(fpp3)
+library(fpp3)
 library(tsibble)
+library(DataExplorer)
+library(forecast)
 
 fb <- read_csv("data/Historico_FB_Ads_Elektra_v2.csv",
                locale = locale(encoding = "UTF-8"))
@@ -32,7 +34,7 @@ gads_grouped <- gads %>%
     values_fill = 0,
     names_vary = "slowest"
   )
-
+DataExplorer::plot_missing(gads_grouped)
 
 fb_grouped <- fb %>%
   group_by(dia = Dia, objetivo_fb = Objetivo) %>%
@@ -51,6 +53,7 @@ fb_grouped <- fb %>%
     values_fill = 0,
     names_vary = "slowest"
   )
+DataExplorer::plot_missing(fb_grouped)
 
 full_data <- full_join(
   gads_grouped,
@@ -59,14 +62,19 @@ full_data <- full_join(
   ) %>%
   rowwise() %>%
   mutate(conversiones =  sum(across(matches("conversiones")), na.rm = T)) %>%
+  ungroup() %>%
   relocate(conversiones, .after = dia) %>%
   select(-matches("conversiones_")) %>%
   rename_with(~str_replace_all(.x, c(" " = "_"))) %>%
   rename_with(~str_to_lower(.x)) %>%
-  #filter(dia >= '2021-11-01') %>%
+  filter(dia >= '2021-11-17', dia <= "2022-06-01") %>%
   select(-c(matches("messages"), matches("lead_generation"),
             matches("post_engagement"), matches("shopping"),
-            matches("rendimiento_máximo")))
+            matches("rendimiento_máximo"))) %>%
+  map_if(is.numeric, replace_na, replace = 0) %>%
+  as_tibble()
+
+DataExplorer::plot_missing(full_data)
 
 M = full_data %>%
   select(-dia) %>%
@@ -101,13 +109,20 @@ ts_full_data <- tsibble::as_tsibble(
   .drop = F
 )
 
-ts_full_data %>% select(dia, conversiones) %>%
-  filter(conversiones != 0)
+ts_full_data %>%
+  GGally::ggpairs(columns = c(2, 4, 5, 6, 9, 14, 8))
 
+#### Rango tiempo
+ts_full_data %>% select(dia, conversiones) %>%
+  filter(conversiones != 0) %>%
+  filter(row_number() == 1 | row_number() == n())
+
+#### Time Serie "Conversiones"
 ts_full_data %>%
   ggplot(aes(x = dia, y = conversiones)) +
   geom_line()
 
+#### Time Series By Year
 ts_full_data %>%
   filter(dia >= '2021-11-17', dia < '2022-06-01') %>%
   gg_season(conversiones, labels = "both", period = "year") +
@@ -116,6 +131,7 @@ ts_full_data %>%
     title = "Gráfico Estacional: Conversiones Elektra"
     )
 
+#### Time Series By Year (Polar)
 ts_full_data %>%
   filter(dia >= '2021-11-17', dia < '2022-06-01') %>%
   gg_season(conversiones, labels = "both", period = "year", polar = T) +
@@ -124,16 +140,17 @@ ts_full_data %>%
     title = "Gráfico Estacional: Conversiones Elektra"
     )
 
-ts_full_data %>%
-  filter(dia >= '2021-11-17', dia < '2022-06-01') %>%
-  gg_subseries(conversiones, period = "year") +
-  labs(
-    y = "$ (millions)", x = "Día de semana",
-    title = "Gráfico Estacional: Conversiones Elektra"
-  )
+# ts_full_data %>%
+#   filter(dia >= '2021-11-17', dia < '2022-06-01') %>%
+#   gg_subseries(conversiones, period = "day") +
+#   labs(
+#     y = "$ (millions)", x = "Día de semana",
+#     title = "Gráfico Estacional: Conversiones Elektra"
+#   )
 
 ################################################################################
 
+#### Time Series By Week
 ts_full_data %>%
   filter(dia >= '2021-11-17', dia < '2022-06-01') %>%
   gg_season(conversiones, labels = "both", period = "week", ) +
@@ -142,6 +159,7 @@ ts_full_data %>%
     title = "Gráfico Estacional: Conversiones Eelektra"
     )
 
+#### Time Series By Week (Polar)
 ts_full_data %>%
   filter(dia >= '2021-11-17', dia < '2022-06-01') %>%
   gg_season(conversiones, labels = "both", period = "week", polar = T) +
@@ -150,6 +168,7 @@ ts_full_data %>%
     title = "Gráfico Estacional: Conversiones Eelektra"
     )
 
+#### Time Series By Weekday
 ts_full_data %>%
   filter(dia >= '2021-11-17', dia < '2022-06-01') %>%
   gg_subseries(conversiones, period = "week") +
@@ -158,6 +177,21 @@ ts_full_data %>%
     title = "Gráfico Estacional: Conversiones Elektra"
   )
 
+#### Histogram, ACF & PACF
+ts_full_data %>%
+  gg_tsdisplay(
+    y = conversiones,
+    lag_max = 15,
+    plot_type = "partial"
+    )
+
+ts_full_data %>%
+  gg_lag(
+    y = conversiones,
+    geom="point",
+    #period = "week",
+    lags = 1:7
+    )
 
 
 
@@ -166,19 +200,75 @@ ts_full_data %>%
 
 
 
+##############################################
+
+
+us_retail_employment <- us_employment %>%
+  filter(year(Month) >= 1990, Title == "Retail Trade") %>%
+  select(-Series_ID)
+
+autoplot(us_retail_employment, Employed) +
+  labs(y = "Persons (thousands)",
+       title = "Total employment in US retail")
+
+dcmp <- us_retail_employment %>%
+  model(stl = STL(Employed))
+components(dcmp)
+
+components(dcmp) %>%
+  as_tsibble() %>%
+  autoplot(Employed, colour="gray") +
+  geom_line(aes(y=trend), colour = "#D55E00") +
+  labs(
+    y = "Persons (thousands)",
+    title = "Total employment in US retail"
+  )
+
+components(dcmp) %>% autoplot()
 
 
 
 
+dcmp2 <- ts_full_data %>%
+  model(stl = STL(conversiones))
+components(dcmp2)
+
+components(dcmp2) %>%
+  as_tsibble() %>%
+  autoplot(conversiones, colour="gray") +
+  geom_line(aes(y=trend), colour = "#D55E00") +
+  labs(
+    y = "$ USD",
+    title = "Total $USD of sales"
+  )
+
+components(dcmp2) %>% autoplot()
+
+components(dcmp2) %>%
+  as_tsibble() %>%
+  autoplot(conversiones, colour="gray") +
+  geom_line(aes(y=season_adjust), colour = "#D55E00") +
+  labs(
+    y = "$ USD",
+    title = "Total $USD of sales"
+  )
+
+ts_full_data %>%
+  model(
+    classical_decomposition(log(conversiones), type = "additive")
+  ) %>%
+  components() %>%
+  autoplot() +
+  labs(title = "Classical additive decomposition of total $USD sales")
 
 
-
-
-
-
-
-
-
+ts_full_data %>%
+  model(
+    STL(log(conversiones) ~ trend(window = 9) +
+                   season(window = "periodic"),
+    robust = TRUE)) %>%
+  components() %>%
+  autoplot()
 
 
 
