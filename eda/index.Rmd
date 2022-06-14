@@ -1,0 +1,49 @@
+--- 
+title: "Elektra: Forecasting DEMO"
+subtitle: "Análisis Exploratorio de Datos"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: [book.bib, packages.bib]
+biblio-style: apalike
+link-citations: yes
+always_allow_html: true
+toctitle: "**Contenido**"
+header-includes:
+  \renewcommand{\contentsname}{Contenido}
+  \usepackage{caption}
+  \captionsetup[figure]{name=Figura}
+  \setlength\headheight{12.80502pt}
+  \usepackage{fancyhdr}
+  \pagestyle{fancy}
+  \fancyhead[LE,RO]{\textsl{\rightmark}}
+  \fancyhead[LO,RE]{\textsl{\leftmark}}
+  \usepackage{float}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE, 
+  fig.pos = 'H', 
+  collapse=TRUE
+  )
+options(tinytex.verbose = TRUE)
+options(Encoding='UTF-8')
+```
+
+# Introducción {-}
+
+Este documento presenta los hallazgos iniciales en los datos usados para realizar el **DEMO** de pronósticos de ventas de *Elektra* a través de la plataforma de e-commerce. A partir de los archivos entregados por parte de *DDI*, se realiza un análisis minucioso sobre cada una de los atributos y eventos asociados a las actividades de marketing y ventas diarias a través de la plataforma.
+
+
+
+```{r portada, echo=FALSE, fig.align='center', out.width='500pt', out.width='350pt'}
+knitr::include_graphics("img/forecasting.jpeg")
+```
+
+
+```{r include=FALSE}
+# automatically create a bib database for R packages
+knitr::write_bib(
+  c(.packages(), 'bookdown', 'knitr', 'rmarkdown'), 
+  'packages.bib')
+```

@@ -1,0 +1,6 @@
+book_filename: "ddi_elektra_demo_eda"
+output_dir: '../docs'
+delete_merged_file: true
+language:
+  ui:
+    chapter_name: "Capítulo "
