@@ -3,11 +3,11 @@ bookdown::gitbook:
   config:
     toc:
       before: |
-        <li><a href="./"><img src="img/logo.png" width="280"></a></li|
+        <li><a href="./"><img src="img/aux/logo.png" width="280"></a></li|
         |:-:|
-        <center>Elektra - Data Science Project Documentation</center>
-    edit: https://github.com/acturio/ddi-ekt-demo/eda/edit/main/%s
-    download: ["pdf"]
+        <center>Data Science Project Documentation</center>
+    edit : null
+    download: null
     sharing:
       facebook: no
       twitter: no
@@ -16,14 +16,3 @@ bookdown::gitbook:
       weibo: no
       instapaper: no
       vk: no
-bookdown::pdf_book:
-  output_dir: 'docs'
-  includes:
-    in_header: preamble.tex
-  latex_engine: xelatex
-  citation_package: natbib
-  keep_tex: yes
-  pdf_document:
-    number_sections: yes
-    toc: yes
-    toc_depth: 3

@@ -1,0 +1,237 @@
+# Insumos
+
+Para realizar el análisis de pronósticos de ventas (en un rango) de la plataforma e-commerce de Elektra Gt, a total plataforma, de manera diaria, se han identificado múltiples fuentes de información que reportan la actividad diaria de marketing a través de las redes sociales, así como el reporte de ventas diario. Las siguientes son fuentes usadas en esta primera fase del proyecto:
+
+* **Google Analytics:** Servicio de seguimiento de actividad comercial para la página de Elektra Gt, la cual cuenta con información de las ventas diarias y resultados de las campañas implementadas cada día.
+
+* **Google Ads:** Servicio de seguimiento de los resultados de actividad diaria publicitaria mediante Google.
+
+* **Facebook Ads:** A través de la API desarrolllada por *Facebook*, se realiza el seguimiento de la actividad de marketing implementada en la red social. Los resultados se analizan por tipo y objetivos de campaña. 
+
+Dos archivos han sido entregados por parte de *DDI* para llevar a cabo el desarrollo del DEMO de pronósticos. Los archivos se encuentran en formato *.csv* y se encuentran alojados en [Google Drive](https://drive.google.com/drive/folders/1b4nUMvnV42VOHQ9hSyWrJHbs6N1Coh6R?usp=sharing)
+
+El primer paso para realizar la exploración de datos, es conocer el contenido de cada uno de los archivos recibidos. En esta sección se realiza la descripción del tamaño de cada archivo y las columnas que forman parte de cada uno. 
+
+```{r libraries}
+library(tidyverse)
+library(corrplot)
+library(heatmaply)
+library(fpp3)
+library(tsibble)
+library(DataExplorer)
+library(forecast)
+library(skimr)
+library(kableExtra)
+```
+
+```{r read_data}
+fb <- read_csv("data/Historico_FB_Ads_Elektra_v2.csv",
+               locale = locale(encoding = "UTF-8"))
+
+gads <- read_csv("data/2022_Data_GoogleAds_InfoAcumulado.csv", skip = 2,
+                 locale = locale(decimal_mark = ",", grouping_mark = ".")) %>%
+  rename_with(~str_replace_all(.x, c(" " = "_", "ó"="o", "\\."="", "í"="i")))
+```
+
+## Google Ads
+
+**Global Summary**
+
+En primer lugar, se hace una exploración global del contenido del archivo recibido.
+
+```{r, message=TRUE}
+tibble(
+  Variable = c("Nombre", "Número de renglones", "Número de columnas", 
+               "_________________________",
+               "Frecuencia de tipo de columna", "Texto", "Fechas", "Numéricas", 
+               "_________________________",
+          "Variable de grupo"),
+  Value = c("Google Ads", "1,740", "8", "", "", "3", "1", "4", "", "Ninguna")
+) %>% 
+  kable("html") %>% 
+  kable_styling("striped")
+```
+
+</br>
+
+```{r, message=TRUE}
+skim_ga <- skim(gads) %>% partition()
+```
+
+
+**Character Summary**
+
+Los campos de cadenas de texto representan la siguiente información:
+
+* **Campaña:** Nombre de la campaña implementada.
+
+* **Tipo de campaña:** Se refiere al objetivo de la campaña implementada. Los distintos objetivos pueden ser: Display, buscar, video, rendimiento máximo y  shopping.
+
+* **Código de moneda:** Hace referencia a la moneda usada para representar las ventas. 
+
+Al considerar las variables que contienen cadenas de texto, se obtiene el número de caracteres mínimos, máximos, cadenas únicas, valores perdidos, entre otros.
+
+```{r, message=TRUE}
+skim_ga$character %>% 
+  rename(variable = skim_variable) %>% 
+  kable("html") %>% 
+  kable_styling("striped") %>% 
+  scroll_box(width = "100%")
+```
+
+
+</br>
+
+
+**Date Summary**
+
+La variable de Día representa la fecha en la que cada una de estas campañas son llevadas a cabo y los resultados asociados a esta para cada día.
+
+En el caso de las columnas que contienen fechas, se obtiene la exploración de fecha mínima, máxima, fechas únicas, etc.
+
+```{r, message=TRUE}
+skim_ga$Date %>% 
+  rename(variable = skim_variable) %>% 
+  kable("html") %>% 
+  kable_styling("striped")
+```
+
+</br>
+
+**Numeric Summary**
+
+Las variables numéricas representan los siguientes resultados asociados a las campañas:
+
+* **Click:** Se refiere al número de clicks recibidos por parte de los usuarios en los links de la campaña asociada.
+
+* **Impre:** Es el número de impreiones en pantalla que se han realizado sobre la campaña de marketing implementada.
+
+* **Coste:** Costo invertido en la campaña
+
+* **Conversiones:** Número de conversiones realizadas cada día
+
+Se realiza el análisis estadístico descriptivo de cada una de las carectrísticas numéricas, tales como valores perdidos, porcentaje de registros completos, valores mínimo, máximo, percentiles, media, desviación estandar, etc. 
+
+```{r, message=TRUE}
+skim_ga$numeric %>% 
+  map_if(is.numeric, round, digits = 1) %>% 
+  as_tibble() %>% 
+  rename(variable = skim_variable) %>% 
+  kable("html") %>% 
+  kable_styling("striped") %>% 
+  scroll_box(width = "100%")
+```
+
+## Facebook Ads
+
+**Global Summary**
+
+La exploración global del contenido del archivo recibido es la siguiente.
+
+```{r, message=TRUE}
+tibble(
+  Variable = c("Nombre", "Número de renglones", "Número de columnas", 
+               "_________________________",
+               "Frecuencia de tipo de columna", "Texto", "Fechas", "Numéricas", 
+               "_________________________",
+          "Variable de grupo"),
+  Value = c("Facebook Ads", "24,774", "11", "", "", "3", "3", "5", "", "Ninguna")
+) %>% 
+  kable("html") %>% 
+  kable_styling("striped")
+```
+
+</br>
+
+```{r, message=TRUE}
+skim_fb <- skim(fb) %>% partition()
+```
+
+
+**Character Summary**
+
+Los campos de cadenas de texto representan la siguiente información:
+
+* **Nombre Campaña:** Nombre de la campaña implementada.
+
+* **Objetivo:** Se refiere al objetivo de la campaña implementada. Los distintos objetivos pueden ser: Link_clicks, lead_generation, reach, post_engagement, video_vies, product_catalog_sales y messages.
+
+* **Tipo resultado:** Es un refinamiento en la descripción del objetivo de la campaña implementada. 
+
+Al considerar las variables que contienen cadenas de texto, se obtiene el número de caracteres mínimos, máximos, cadenas únicas, valores perdidos, entre otros.
+
+```{r, message=TRUE}
+skim_fb$character %>% 
+  rename(variable = skim_variable) %>% 
+  kable("html") %>% 
+  kable_styling("striped") %>% 
+  scroll_box(width = "100%")
+```
+
+
+</br>
+
+
+**Date Summary**
+
+En esta sección se presentan 3 columnas con fechas, las cuales representan lo siguiente:
+
+* **Día:** Representa la fecha en la que cada una de estas campañas son llevadas a cabo y los resultados asociados a esta para cada día.
+
+* **Inicio_informe:** Es la fecha inicial del periodo que abarca el reporte de resultados.
+
+* **Fin_informe:** Es la fecha final del periodo que abarca el reporte de resultados.
+
+En el caso de las columnas que contienen fechas, se obtiene la exploración de fecha mínima, máxima, fechas únicas, etc.
+
+```{r, message=TRUE}
+skim_fb$Date %>% 
+  rename(variable = skim_variable) %>% 
+  kable("html") %>% 
+  kable_styling("striped")
+```
+
+</br>
+
+**Numeric Summary**
+
+Las variables numéricas representan los siguientes resultados asociados a las campañas:
+
+* **Alcance:** Se refiere al número de personas únicas a las que llega la publicación de la campaña en cuestión.
+
+* **Impresiones:** Es el número de impresiones en pantalla que se han realizado sobre la campaña de marketing implementada (Sin considerar usuarios únicos).
+
+* **Resultados:** Es el número de likes, clicks u acciones llevadas a cabo de acuerdo con la variable `Tipo de resultado`.
+
+* **Importe gastado USD:** Inversión realizada en la campaña que permite obtener los resultados reportados. La inversión se realiza en USD
+
+* **Clics enlace:** Es el número de interacciones a través de click en la campaña digital.
+
+Se realiza el análisis estadístico descriptivo de cada una de las carectrísticas numéricas, tales como valores perdidos, porcentaje de registros completos, valores mínimo, máximo, percentiles, media, desviación estandar, etc. 
+
+```{r, message=TRUE}
+skim_fb$numeric %>% 
+  map_if(is.numeric, round, digits = 1) %>% 
+  as_tibble() %>% 
+  rename(variable = skim_variable) %>% 
+  kable("html") %>% 
+  kable_styling("striped") %>% 
+  scroll_box(width = "100%")
+```
+
+## Google Analytics
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

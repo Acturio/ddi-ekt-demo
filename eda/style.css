@@ -16,3 +16,39 @@ pre code {
 p {
   text-align: justify;
 }
+
+.infobox {
+  padding: 1em 1em 1em 4em;
+  margin-bottom: 10px;
+  border: 2px solid gray;
+  border-radius: 10px;
+  background: #f5f5f5 5px center/3em no-repeat;
+}
+
+.note {
+  background-image: url("img/aux/note.jpeg");
+}
+
+.important {
+  background-image: url("img/aux/important.jpeg");
+}
+
+.pin {
+  background-image: url("img/aux/pin.jpeg");
+}
+
+.advice_pin {
+  background-image: url("img/aux/advice_pin.jpeg");
+}
+
+.advice {
+  background-image: url("img/aux/advice.jpeg");
+}
+
+.tip {
+  background-image: url("img/aux/tip.jpeg");
+}
+
+.quicktip {
+  background-image: url("img/aux/quicktip.jpeg");
+}
