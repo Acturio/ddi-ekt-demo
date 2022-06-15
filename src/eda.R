@@ -5,16 +5,35 @@ library(fpp3)
 library(tsibble)
 library(DataExplorer)
 library(forecast)
+library(skimr)
+library(flipTime)
 
 fb <- read_csv("data/Historico_FB_Ads_Elektra_v2.csv",
-               locale = locale(encoding = "UTF-8"))
+               locale = locale(encoding = "UTF-8"), na=c("","NA","null"))
 
 gads <- read_csv("data/2022_Data_GoogleAds_InfoAcumulado.csv", skip = 2,
-                 locale = locale(decimal_mark = ",", grouping_mark = ".")) %>%
+                 locale = locale(decimal_mark = ",", grouping_mark = "."), na=c("","NA","null")) %>%
   rename_with(~str_replace_all(.x, c(" " = "_", "ó"="o", "\\."="", "í"="i")))
 
+gticks_tr <- read_csv2("data/Elektra_Analytics_Transacciones Historico.csv", na=c("","NA","null")) %>%
+  rename(Fuente_medio = `Fuente/Medio`) %>%
+  mutate(Fecha = dmy(Fecha))
 
 
+gticks_usd <- read_csv("data/Extracción de datos Producto elektra.csv", na=c("","NA","null")) %>%
+  rename(Ingresos = `Ingresos del producto`) %>%
+  mutate(Fecha = dmy(Fecha)) %>%
+  filter(!is.na(Fecha))
+
+gticks_usd %>% tail()
+##########################################
+
+skimr::skim(fb)
+skimr::skim(gads)
+skimr::skim(gticks_tr)
+skimr::skim(gticks_usd)
+
+##########################################
 
 gads_grouped <- gads %>%
   mutate_at(vars(Clics:Conversiones),
@@ -55,6 +74,25 @@ fb_grouped <- fb %>%
   )
 DataExplorer::plot_missing(fb_grouped)
 
+gticks_tr_grouped <- gticks_tr %>%
+  group_by(Fecha) %>%
+  summarise(
+    N_fuente_medio = n_distinct(Fuente_medio),
+    Sesiones = sum(Sesiones, na.rm = T),
+    Transacciones = sum(Transacciones, na.rm = T),
+    Usuarios = sum(Usuarios, na.rm = T)
+    )
+DataExplorer::plot_missing(gticks_tr_grouped)
+
+gticks_usd_grouped <- gticks_usd %>%
+  group_by(Fecha) %>%
+  summarise(
+    n_distinct_products = n_distinct(Producto),
+    Cantidad = sum(Cantidad, na.rm = T),
+    Ingresos = sum(Ingresos, na.rm = T)
+  )
+DataExplorer::plot_missing(gticks_usd_grouped)
+
 full_data <- full_join(
   gads_grouped,
   fb_grouped,
@@ -75,6 +113,25 @@ full_data <- full_join(
   as_tibble()
 
 DataExplorer::plot_missing(full_data)
+
+
+#############################################################
+
+gticks_tr_grouped %>%
+  #filter(Fecha >= '2021-12-01') %>%
+  ggplot(aes(x = Fecha, y = Transacciones)) +
+  geom_col(fill = "gray", color = "black") +
+  scale_x_date(date_breaks = "1 month") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+gticks_usd_grouped %>%
+  #filter(Fecha >= '2021-12-01') %>%
+  ggplot(aes(x = Fecha, y = Cantidad)) +
+  geom_col(fill = "gray", color = "black") +
+  scale_x_date(date_breaks = "1 month") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+#############################################################
 
 M = full_data %>%
   select(-dia) %>%
@@ -264,8 +321,7 @@ ts_full_data %>%
 
 ts_full_data %>%
   model(
-    STL(log(conversiones) ~ trend(window = 9) +
-                   season(window = "periodic"),
+    STL(log(conversiones) ~ trend(window = 9) + season(window = "periodic"),
     robust = TRUE)) %>%
   components() %>%
   autoplot()
