@@ -25,7 +25,6 @@ gticks_usd <- read_csv("data/Extracción de datos Producto elektra.csv", na=c(""
   mutate(Fecha = dmy(Fecha)) %>%
   filter(!is.na(Fecha))
 
-gticks_usd %>% tail()
 ##########################################
 
 skimr::skim(fb)
