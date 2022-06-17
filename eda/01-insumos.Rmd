@@ -8,7 +8,7 @@ Para realizar el análisis de pronósticos de ventas (en un rango) de la platafo
 
 * **Facebook Ads:** A través de la API desarrolllada por *Facebook*, se realiza el seguimiento de la actividad de marketing implementada en la red social. Los resultados se analizan por tipo y objetivos de campaña. 
 
-Dos archivos han sido entregados por parte de *DDI* para llevar a cabo el desarrollo del DEMO de pronósticos. Los archivos se encuentran en formato *.csv* y se encuentran alojados en [Google Drive](https://drive.google.com/drive/folders/1b4nUMvnV42VOHQ9hSyWrJHbs6N1Coh6R?usp=sharing)
+Tres archivos han sido entregados por parte de *DDI* para llevar a cabo el desarrollo del DEMO de pronósticos. Los archivos se encuentran en formato *.csv* y se encuentran alojados en [Google Drive](https://drive.google.com/drive/folders/1b4nUMvnV42VOHQ9hSyWrJHbs6N1Coh6R?usp=sharing)
 
 El primer paso para realizar la exploración de datos, es conocer el contenido de cada uno de los archivos recibidos. En esta sección se realiza la descripción del tamaño de cada archivo y las columnas que forman parte de cada uno. 
 
@@ -31,11 +31,21 @@ fb <- read_csv("data/Historico_FB_Ads_Elektra_v2.csv",
 gads <- read_csv("data/2022_Data_GoogleAds_InfoAcumulado.csv", skip = 2,
                  locale = locale(decimal_mark = ",", grouping_mark = ".")) %>%
   rename_with(~str_replace_all(.x, c(" " = "_", "ó"="o", "\\."="", "í"="i")))
+
+gticks_tr <- read_csv2("data/Elektra_Analytics_Transacciones Historico.csv", na=c("","NA","null")) %>%
+  rename(Fuente_medio = `Fuente/Medio`) %>%
+  mutate(Fecha = dmy(Fecha))
+
+gticks_q <- read_csv("data/Extracción de datos Producto elektra.csv", 
+                       na=c("","NA","null")) %>%
+  rename(Ingresos = `Ingresos del producto`) %>%
+  mutate(Fecha = dmy(Fecha)) %>%
+  filter(!is.na(Fecha))
 ```
 
 ## Google Ads
 
-**Global Summary**
+**Resumen Global**
 
 En primer lugar, se hace una exploración global del contenido del archivo recibido.
 
@@ -59,7 +69,7 @@ skim_ga <- skim(gads) %>% partition()
 ```
 
 
-**Character Summary**
+**Resumen de Texto**
 
 Los campos de cadenas de texto representan la siguiente información:
 
@@ -83,7 +93,7 @@ skim_ga$character %>%
 </br>
 
 
-**Date Summary**
+**Resumen de Fechas**
 
 La variable de Día representa la fecha en la que cada una de estas campañas son llevadas a cabo y los resultados asociados a esta para cada día.
 
@@ -98,7 +108,7 @@ skim_ga$Date %>%
 
 </br>
 
-**Numeric Summary**
+**Resumen Numérico**
 
 Las variables numéricas representan los siguientes resultados asociados a las campañas:
 
@@ -124,7 +134,7 @@ skim_ga$numeric %>%
 
 ## Facebook Ads
 
-**Global Summary**
+**Resumen Global**
 
 La exploración global del contenido del archivo recibido es la siguiente.
 
@@ -148,7 +158,7 @@ skim_fb <- skim(fb) %>% partition()
 ```
 
 
-**Character Summary**
+**Resumen de Texto**
 
 Los campos de cadenas de texto representan la siguiente información:
 
@@ -172,7 +182,7 @@ skim_fb$character %>%
 </br>
 
 
-**Date Summary**
+**Resumen de Fechas**
 
 En esta sección se presentan 3 columnas con fechas, las cuales representan lo siguiente:
 
@@ -193,7 +203,7 @@ skim_fb$Date %>%
 
 </br>
 
-**Numeric Summary**
+**Resumen Numérico**
 
 Las variables numéricas representan los siguientes resultados asociados a las campañas:
 
@@ -221,12 +231,176 @@ skim_fb$numeric %>%
 
 ## Google Analytics
 
+Google Analytics nos ofrece 2 reportes sobre las ventas, productos, transacciones, sesiones y usuarios diarios interactuando en la plataforma, por lo que es a través de esta fuente de información que seleccionamos la variable de respuesta que deseamos predecir: **Ventas diarias.** 
+
+### Productos y ventas
+
+Se presenta a continuación el análisis exploratorio correspondiente a los productos vendidos y monto de ventas en Quetzales.
+
+**Resumen Global**
+
+La exploración global del contenido del archivo recibido es la siguiente.
+
+```{r, message=TRUE}
+tibble(
+  Variable = c("Nombre", "Número de renglones", "Número de columnas", 
+               "_________________________",
+               "Frecuencia de tipo de columna", "Texto", "Fechas", "Numéricas", 
+               "_________________________",
+          "Variable de grupo"),
+  Value = c("Google Analytics 1", "56,625", "4", "", "", "1", "1", "2", "", "Ninguna")
+) %>% 
+  kable("html") %>% 
+  kable_styling("striped")
+```
+
+</br>
+
+```{r, message=TRUE}
+skim_gaq <- skim(gticks_q) %>% partition()
+```
+
+**Resumen de Texto**
+
+Los campos de cadenas de texto representan la siguiente información:
+
+* **Producto:** Nombre del producto vendido.
+
+Al considerar las variables que contienen cadenas de texto, se obtiene el número de caracteres mínimos, máximos, cadenas únicas, valores perdidos, entre otros.
+
+```{r, message=TRUE}
+skim_gaq$character %>% 
+  rename(variable = skim_variable) %>% 
+  kable("html") %>% 
+  kable_styling("striped") %>% 
+  scroll_box(width = "100%")
+```
 
 
+</br>
 
 
+**Resumen de Fechas**
+
+En esta sección se presentan 3 columnas con fechas, las cuales representan lo siguiente:
+
+* **Fecha:** Representa la fecha en la que cada una de los productos fueron vendidos.
+
+En el caso de las columnas que contienen fechas, se obtiene la exploración de fecha mínima, máxima, fechas únicas, etc.
+
+```{r, message=TRUE}
+skim_gaq$Date %>% 
+  rename(variable = skim_variable) %>% 
+  kable("html") %>% 
+  kable_styling("striped")
+```
+
+</br>
+
+**Resumen Numérico**
+
+Las variables numéricas representan los siguientes resultados asociados a las campañas:
+
+* **Cantidad:** Se refiere al número de productos de la misma clase comprados en la transacción.
+
+* **Ingresos:** Es la cantidad pagada en Quetzales por los productos vendidos.
+
+Se realiza el análisis estadístico descriptivo de cada una de las carectrísticas numéricas, tales como valores perdidos, porcentaje de registros completos, valores mínimo, máximo, percentiles, media, desviación estandar, etc. 
+
+```{r, message=TRUE}
+skim_gaq$numeric %>% 
+  map_if(is.numeric, round, digits = 1) %>% 
+  as_tibble() %>% 
+  rename(variable = skim_variable) %>% 
+  kable("html") %>% 
+  kable_styling("striped") %>% 
+  scroll_box(width = "100%")
+```
 
 
+### Sesiones y usuarios
+
+Se presenta a continuación el análisis exploratorio correspondiente a los usuarios, transacciones y sesiones reportadas de manera histórica.
+
+**Resumen Global**
+
+La exploración global del contenido del archivo recibido es la siguiente.
+
+```{r, message=TRUE}
+tibble(
+  Variable = c("Nombre", "Número de renglones", "Número de columnas", 
+               "_________________________",
+               "Frecuencia de tipo de columna", "Texto", "Fechas", "Numéricas", 
+               "_________________________",
+          "Variable de grupo"),
+  Value = c("Google Analytics 2", "81,230", "5", "", "", "1", "1", "3", "", "Ninguna")
+) %>% 
+  kable("html") %>% 
+  kable_styling("striped")
+```
+
+</br>
+
+```{r, message=TRUE}
+skim_gat <- skim(gticks_tr) %>% partition()
+```
+
+**Resumen de Texto**
+
+Los campos de cadenas de texto representan la siguiente información:
+
+* **Fuente_medio:** Nombre de la fuente y el medio por el cual se llega al portal de Elektra.
+
+Al considerar las variables que contienen cadenas de texto, se obtiene el número de caracteres mínimos, máximos, cadenas únicas, valores perdidos, entre otros.
+
+```{r, message=TRUE}
+skim_gat$character %>% 
+  rename(variable = skim_variable) %>% 
+  kable("html") %>% 
+  kable_styling("striped") %>% 
+  scroll_box(width = "100%")
+```
+
+</br>
+
+**Resumen de Fechas**
+
+En esta sección se presentan 3 columnas con fechas, las cuales representan lo siguiente:
+
+* **Fecha:** Representa la fecha en la que cada una de los productos fueron vendidos.
+
+En el caso de las columnas que contienen fechas, se obtiene la exploración de fecha mínima, máxima, fechas únicas, etc.
+
+```{r, message=TRUE}
+skim_gat$Date %>% 
+  rename(variable = skim_variable) %>% 
+  kable("html") %>% 
+  kable_styling("striped")
+```
+
+</br>
+
+**Resumen Numérico**
+
+Las variables numéricas representan los siguientes resultados asociados a las campañas:
+
+* **Sesiones:** Número de sesiones reportadas en un día en el portal de Elektra.
+
+* **Transacciones:** Es la cantidad de conversiones que sí reultaron en transacción (venta de algún producto).
+
+* **Usuarios:** Es la cantidad de usuarios en el portal de Elektra.
+
+Se realiza el análisis estadístico descriptivo de cada una de las carectrísticas numéricas, tales como valores perdidos, porcentaje de registros completos, valores mínimo, máximo, percentiles, media, desviación estandar, etc. 
+
+```{r, message=TRUE}
+skim_gat$numeric %>% 
+  map_if(is.numeric, round, digits = 1) %>% 
+  as_tibble() %>% 
+  rename(variable = skim_variable) %>% 
+  kable("html") %>% 
+  kable_styling("striped") %>% 
+  scroll_box(width = "100%")
+```
 
 
 

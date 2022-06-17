@@ -1,0 +1,293 @@
+# Análisis exploratorio
+
+Una vez que los datos individuales han sido estudiados descriptivamente de manera cruda, se procede a realizar la creación de un único conjunto de datos que centralice la información de todas las fuentes de información presentadas anteriormente. Este conjunto se crea mediante agregaciones diarias de todas las métricas reportadas originalmente, de modo que se pueda analizar posteriormente la relación entre la variable de respuesta (ventas diarias) y el resto de información que podría servir para estimar el pronóstico de ventas diarias.
+
+## Nomenclatura
+
+Para el caso de Facebook y Google Ads, las variables que se incluyen en este conjunto de datos presenta una nomenclatura particular que depende de la información que se analiza en cada columna para cada campaña. La nomenclatura es la siguiente
+
+$$\text{origen_métrica_propósito}$$
+
+**Donde:**
+
+> Origen: Es la fuente de datos (Google Ads, Google Analytics, Facebook).
+>
+> Métrica: Hace referencia a la medición (likes, costo, alcance, conversiones, etc).
+>
+> Propósito: Refiere al objetivo que tiene cada campaña.
+
+En el caso de Google Analytics, la nomenclatura es ligeramente distinta, pues no contienen información de campañas sino de resultados de las sesiones en la plataforma de Elektra. Esta nomenclatura sigue la siguiente sintaxis:
+
+$$\text{origen_métrica}$$
+
+Ejemplos: 
+
+* **fb_costo_video_views:** Variable que proviene de Facebook y mide el costo invertido cada día en campañas que tenían como propósito lograr vistas mediante videos
+
+* **gtics_ingresos:** Variable proveniente de Google Analytics que mide los ingresos diarios en Quetzales.
+
+* **gtics_n_fuente_medio:** Variable de Google Analytics que refiere al número de combinaciones distintas de fuentes/medios por los cuales se llevaron a cabo las sesiones del portal de Elektra cada día
+
+* **fb_n_link_click:** En Facebook, es el número de campañas distintas implementadas cada día cuyo propósito es la obtención de click en un link.
+
+___
+
+Una vez que el conjunto de datos ha sido creado, se procede a analizar la consistencia, calidad y disponibilidad de información obtenida. A partir de este análisis se conoce la viabilidad de usar la información de cada una de las fuentes de información. 
+
+Algunas de las principales características de interés es la distribución univariada y multivariada de cada para de características, así como las medidas de tendencia central y porcentaje de datos perdidos.
+
+## Análisis de disponibilidad
+
+Aunque originalmente no se observaron muchos datos faltantes cuando se realiza el análisis individual de cada fuente de información, al hacer coincidir las tablas por fechas es posible tener disparidades importantes, por lo que se realiza un análisis de datos faltantes después de observar las fechas de disponibilidad de datos:
+
+|Fuente           |Fecha inicial  |Fecha final |
+|-----------------|---------------|------------|
+|Facebook Ads     |2019-10-30     |2021-11-22  |
+|Google Analytics |2019-09-30     |2022-06-13  |
+|Google Ads       |2021-10-31     |2022-06-02  |
+
+Al considerar el periodo completo del 30 de septiembre de 2019 al 13 de junio de 2022, los cuenta con un volumen de datos faltantes considerable, mismo que se representa en las siguientes gráficas:
+
+```{r}
+fb_agg <- fb %>%
+  group_by(dia = Dia, objetivo_fb = Objetivo) %>%
+  summarise(
+    fb_n = n_distinct(Nombre_campaña),
+    fb_alcance = sum(Alcance, na.rm = T),
+    fb_impresiones = sum(Impresiones, na.rm = T),
+    fb_resultados = sum(Resultados, na.rm = T),
+    fb_costo = sum(Importe_gastado_USD, na.rm = T),
+    fb_clicks = sum(Clics_enlace, na.rm = T),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = objetivo_fb,
+    values_from = c("fb_n", "fb_alcance", "fb_impresiones", 
+                    "fb_resultados", "fb_costo", "fb_clicks"),
+    values_fill = 0,
+    names_vary = "slowest"
+  ) %>% 
+  rename_with(tolower)
+  
+gads_agg <- gads %>%
+  mutate_at(vars(Clics:Conversiones),
+            ~as.numeric(str_replace(.x, pattern = ",", replacement = ""))) %>%
+  group_by(dia = Dia, objetivo_ga = Tipo_de_campaña) %>%
+  summarise(
+    gads_n = n_distinct(Campaña),
+    gads_clicks = sum(Clics, na.rm = T),
+    gads_impresiones = sum(Impr, na.rm = T),
+    gads_costo = sum(Coste, na.rm = T),
+    gads_conversiones = sum(Conversiones, na.rm = T),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = objetivo_ga,
+    values_from = c("gads_n", "gads_clicks", "gads_impresiones", 
+                    "gads_costo", "gads_conversiones"),
+    values_fill = 0,
+    names_vary = "slowest"
+  ) %>% 
+  rename_with(tolower)
+
+
+gticks_tr_agg <- gticks_tr %>% 
+  group_by(fecha = Fecha) %>%
+  summarise(
+    gtics_n_fuente_medio = n_distinct(Fuente_medio),
+    gtics_sesiones = sum(Sesiones, na.rm = T),
+    gtics_transacciones = sum(Transacciones, na.rm = T),
+    gtics_usuarios = sum(Usuarios, na.rm = T),
+    .groups = "drop"
+  )
+  
+gticks_q_agg <- gticks_q %>% 
+  group_by(fecha = Fecha) %>%
+  summarise(
+    gtics_n_productos = n_distinct(Producto),
+    gtics_cantidad = sum(Cantidad, na.rm = T),
+    gtics_ingresos = sum(Ingresos, na.rm = T),
+    .groups = "drop"
+  )
+```
+ 
+```{r}
+data <- gticks_q_agg %>% 
+  left_join(gticks_tr_agg, by = "fecha") %>% 
+  left_join(gads_agg, by = c("fecha" = "dia")) %>% 
+  left_join(fb_agg, by = c("fecha" = "dia")) %>% 
+  rename_with(~str_replace_all(.x, " ", "_"))
+  #map_if(is.numeric, replace_na, replace = 0) %>%
+  #as_tibble()
+```
+
+
+```{r, eval=FALSE, out.height='700px'}
+data %>% 
+  select(starts_with("fb")) %>% 
+  DataExplorer::plot_missing(
+    geom_label_args = list(size = 2.5),
+    theme_config= list(text = element_text(size=10)),
+    title = "Missing Values % (Facebook)"
+  )
+```
+
+```{r echo=FALSE, fig.align='center', out.width='700pt', out.height='700pt'}
+knitr::include_graphics("img/01-eda/missings_google.png")
+```
+
+```{r, eval=FALSE, out.height='700px'}
+data %>% 
+  select(-starts_with("fb")) %>% 
+  DataExplorer::plot_missing(
+    geom_label_args = list(size = 2.5),
+    theme_config= list(text = element_text(size=10)),
+    title = "Missing Values % (Google)"
+  ) 
+```
+
+```{r echo=FALSE, fig.align='center', out.width='700pt', out.height='700pt'}
+knitr::include_graphics("img/01-eda/missings_facebook.png")
+```
+ 
+Es importante la cantidad de datos faltantes provenientes de Google Ads, por lo que se revisará posteriormente la factibilidad de conseguir dicha información. Una manera fácil de entender la magnitud de la falta de información se logra a través del siguiente gráfico:
+
+```{r}
+
+data %>% 
+ggplot(aes(x = fecha, y = gtics_ingresos)) +
+  geom_col(fill = "red", color = "red") +
+  geom_vline(xintercept = ymd("2019-10-30"), colour = "blue") +
+  geom_vline(xintercept = ymd("2021-11-22"), colour = "blue") +
+  geom_vline(xintercept = ymd("2021-10-31"), colour = "green") +
+  geom_vline(xintercept = ymd("2022-06-13"), colour = "green") +
+  scale_x_date(date_breaks = "1 month") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(title = "Monto de ventas históricas", x = "Fecha", y = "Ingresos (Q)")
+```
+
+ Las ventas diarias están representadas por las líneas verticales rojas (Google Analytics). El periodo contenido entre las lineas azules representa la información disponible de Facebook Ads, mientras que la información contenida entre las lineas verdes corresponde a Google Ads.
+ 
+
+ 
+::: {.infobox .note data-latex="{note}"}
+**¡Toma de decisión!**
+
+Dada esta información disponible... Se comenzará a trabajar con Google Ads y Google Analytics para el periodo del 1° de noviembre de 2021 a la fecha, sin embargo, es áltamente deseable contar con la información completa para extraer el mayor valor de la información recolactada.
+:::
+
+## Análisis univariado
+
+Con el objetivo de conocer la distribución univariada de cada una de las características asociadas a las ventas, se crean gráficos de histogramas, las cuales se presentan a continuación:
+
+```{r}
+#DataExplorer::create_report(data)
+data %>% 
+  filter(fecha >= "2021-10-31") %>% 
+  select(-starts_with("fb")) %>%
+  DataExplorer::plot_histogram(ncol = 2, title = "Univariate Histograms")
+```
+
+De manera adicional, los gráficos QQ-plot permiten conocer la bondad de ajuste de una distribución normal estándar con cada una de las potenciales variables explicativas al comparar la distribución de ambas variables (Variable explicativa Vs Distribución normal).
+
+A continuación se muestran los gráficos que permiten entender mejor la comparación de distribuciones:
+
+```{r}
+data %>% 
+  filter(fecha >= "2021-10-31") %>% 
+  select(-starts_with("fb")) %>%
+  DataExplorer::plot_qq(ncol = 2, title = "QQ-plots")
+```
+
+
+## Análisis de correlación
+
+Una vez analizada la distribución unitaria de cada una de las variables presentes, se desea conocer el grado de asociación entre variables, de forma que pueda saberse cuáles de ellas están relacionadas de manera positiva o negativa, así como la intensidad de esta posible relación.
+
+```{r}
+M = data %>%
+  filter(fecha >= "2021-10-31") %>% 
+  select(-fecha, -starts_with("fb")) %>%
+  cor(use = "pairwise.complete.obs")
+
+```
+
+
+```{r, out.height="800px"}
+heatmaply_cor(
+  M,
+  xlab = "",
+  ylab = "",
+  column_text_angle = 90,
+  k_col = 2,
+  k_row = 2,
+  scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+    low = scales::muted("red"),
+    high = scales::muted("blue"),
+    midpoint = 0,
+    limits = c(-1, 1)
+  )
+)
+```
+
+Estas relaciones permiten tener una mayor idea de la consistencia y posibles variables que pueden usarse de manera conjunta para realizar un análisis predictivo. Es de particular interés conocer la relación existente entre la variable de respuesta **gtics_ingresos** y cada una de las variables presentes.
+
+```{r}
+M %>% .[,"gtics_ingresos"] %>%
+  as.data.frame() %>% 
+  rownames_to_column() %>% 
+  rename("Correlation" = ".", "Variable" = "rowname") %>% 
+  arrange(desc(abs(Correlation))) %>% 
+  mutate(Correlation = round(Correlation, 4)) %>% 
+  DT::datatable()
+```
+
+En primer lugar, se proponen como variables explicativas a aquellas que tengan una correlación en valor absoluto mayor a 0.60, seguidas de aquellas cuya correlación sea mayor a 0.30. Finalmente, se explorará el impacto que pueda tener el resto de variables.
+
+Es de particular interés estudiar las variables que puedan conocerse de manera anticipada al día de la predicción, es decir, variables como **costo invertido** son en primer instancia de mayor valor debido a que esas cantidades sí pueden planearse de manera anticipada, mientras que variables como **total de productos vendidos** sí presentan una alta correlación, sin embargo, no puede conocerse de manera preciso el valor de esta medición con anticipación.
+
+## Análisis multivariado gráfico
+
+Habiendo observado la correlación analítica de manera conjunta entre variable objetivo y el resto de variables, se procede a observar esta relación de manera gráfica.
+
+```{r}
+data %>%
+  filter(fecha >= "2021-10-31") %>% 
+  select(-fecha, -starts_with("fb"), -ends_with("shopping")) %>%
+  DataExplorer::plot_scatterplot(by = "gtics_ingresos")
+```
+
+## Reducción de dimensión
+
+Un caso de análisis particular que resulta de mucho interés, es el análisis de reducción de dimensión a partir de **Componentes Principales**, en donde es posible crear nuevas variables que sustituyan a las originales manteniendo un alto nivel de información con menos variables que el número original de variables.
+
+En las siguientes gráficas se presenta el porcentaje de información retenida al conservar 1, 5, 10, etc componentes nuevas. Es posible apreciar en la gráfica que con 8 componentes se logra retener el 85% de información de las 32 variables originales.
+
+```{r}
+data %>%
+  filter(fecha >= "2021-10-31") %>% 
+  select(-fecha, -starts_with("fb")) %>%
+  na.omit() %>% 
+  DataExplorer::plot_prcomp(
+    variance_cap = 0.9,
+    ncol = 2,
+    nrow = 1
+  )
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
