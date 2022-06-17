@@ -1,6 +1,6 @@
 # Análisis exploratorio
 
-Una vez que los datos individuales han sido estudiados descriptivamente de manera cruda, se procede a realizar la creación de un único conjunto de datos que centralice la información de todas las fuentes de información presentadas anteriormente. Este conjunto se crea mediante agregaciones diarias de todas las métricas reportadas originalmente, de modo que se pueda analizar posteriormente la relación entre la variable de respuesta (ventas diarias) y el resto de información que podría servir para estimar el pronóstico de ventas diarias.
+Una vez que los datos individuales han sido estudiados descriptivamente de manera cruda, se procede a realizar la creación de un único conjunto de datos que centralice la información de todas las fuentes de información presentadas anteriormente. Este conjunto se crea mediante agregaciones diarias de todas las métricas reportadas originalmente, de modo que se pueda analizar posteriormente la relación entre la variable de respuesta (transacciones diarias) y el resto de información que podría servir para estimar este pronóstico.
 
 ## Nomenclatura
 
@@ -24,7 +24,7 @@ Ejemplos:
 
 * **fb_costo_video_views:** Variable que proviene de Facebook y mide el costo invertido cada día en campañas que tenían como propósito lograr vistas mediante videos
 
-* **gtics_ingresos:** Variable proveniente de Google Analytics que mide los ingresos diarios en Quetzales.
+* **gtics_transacciones:** Variable proveniente de Google Analytics que mide la cantidad de transacciones diarias.
 
 * **gtics_n_fuente_medio:** Variable de Google Analytics que refiere al número de combinaciones distintas de fuentes/medios por los cuales se llevaron a cabo las sesiones del portal de Elektra cada día
 
@@ -34,7 +34,7 @@ ___
 
 Una vez que el conjunto de datos ha sido creado, se procede a analizar la consistencia, calidad y disponibilidad de información obtenida. A partir de este análisis se conoce la viabilidad de usar la información de cada una de las fuentes de información. 
 
-Algunas de las principales características de interés es la distribución univariada y multivariada de cada para de características, así como las medidas de tendencia central y porcentaje de datos perdidos.
+Algunas de las principales características de interés es la distribución univariada y multivariada de cada par de características, así como las medidas de tendencia central y porcentaje de datos perdidos.
 
 ## Análisis de disponibilidad
 
@@ -46,7 +46,7 @@ Aunque originalmente no se observaron muchos datos faltantes cuando se realiza e
 |Google Analytics |2019-09-30     |2022-06-13  |
 |Google Ads       |2021-10-31     |2022-06-02  |
 
-Al considerar el periodo completo del 30 de septiembre de 2019 al 13 de junio de 2022, los cuenta con un volumen de datos faltantes considerable, mismo que se representa en las siguientes gráficas:
+Al considerar el periodo completo del 30 de septiembre de 2019 al 13 de junio de 2022, se cuenta con un volumen de datos faltantes considerable, mismo que se representa en las siguientes gráficas:
 
 ```{r}
 fb_agg <- fb %>%
@@ -117,8 +117,6 @@ data <- gticks_q_agg %>%
   left_join(gads_agg, by = c("fecha" = "dia")) %>% 
   left_join(fb_agg, by = c("fecha" = "dia")) %>% 
   rename_with(~str_replace_all(.x, " ", "_"))
-  #map_if(is.numeric, replace_na, replace = 0) %>%
-  #as_tibble()
 ```
 
 
@@ -126,10 +124,11 @@ data <- gticks_q_agg %>%
 data %>% 
   select(starts_with("fb")) %>% 
   DataExplorer::plot_missing(
-    geom_label_args = list(size = 2.5),
-    theme_config= list(text = element_text(size=10)),
+    geom_label_args = list(size = 2.7),
+    theme_config= list(text = element_text(size=11)),
     title = "Missing Values % (Facebook)"
-  )
+  ) +
+  scale_y_continuous(limits = c(0, 1000))
 ```
 
 ```{r echo=FALSE, fig.align='center', out.width='700pt', out.height='700pt'}
@@ -140,10 +139,11 @@ knitr::include_graphics("img/01-eda/missings_google.png")
 data %>% 
   select(-starts_with("fb")) %>% 
   DataExplorer::plot_missing(
-    geom_label_args = list(size = 2.5),
-    theme_config= list(text = element_text(size=10)),
+    geom_label_args = list(size = 2.7),
+    theme_config= list(text = element_text(size=11)),
     title = "Missing Values % (Google)"
-  ) 
+  )  +
+  scale_y_continuous(limits = c(0, 1000))
 ```
 
 ```{r echo=FALSE, fig.align='center', out.width='700pt', out.height='700pt'}
@@ -155,7 +155,7 @@ Es importante la cantidad de datos faltantes provenientes de Google Ads, por lo 
 ```{r}
 
 data %>% 
-ggplot(aes(x = fecha, y = gtics_ingresos)) +
+ggplot(aes(x = fecha, y = gtics_transacciones)) +
   geom_col(fill = "red", color = "red") +
   geom_vline(xintercept = ymd("2019-10-30"), colour = "blue") +
   geom_vline(xintercept = ymd("2021-11-22"), colour = "blue") +
@@ -163,10 +163,10 @@ ggplot(aes(x = fecha, y = gtics_ingresos)) +
   geom_vline(xintercept = ymd("2022-06-13"), colour = "green") +
   scale_x_date(date_breaks = "1 month") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  labs(title = "Monto de ventas históricas", x = "Fecha", y = "Ingresos (Q)")
+  labs(title = "Monto de transacciones históricas", x = "Fecha", y = "Transacciones")
 ```
 
- Las ventas diarias están representadas por las líneas verticales rojas (Google Analytics). El periodo contenido entre las lineas azules representa la información disponible de Facebook Ads, mientras que la información contenida entre las lineas verdes corresponde a Google Ads.
+ Las transacciones diarias están representadas por las líneas verticales rojas (Google Analytics). El periodo contenido entre las lineas azules representa la información disponible de Facebook Ads, mientras que la información contenida entre las lineas verdes corresponde a Google Ads.
  
 
  
@@ -178,7 +178,7 @@ Dada esta información disponible... Se comenzará a trabajar con Google Ads y G
 
 ## Análisis univariado
 
-Con el objetivo de conocer la distribución univariada de cada una de las características asociadas a las ventas, se crean gráficos de histogramas, las cuales se presentan a continuación:
+Con el objetivo de conocer la distribución univariada de cada una de las características asociadas a las transacciones, se crean gráficos de histogramas, las cuales se presentan a continuación:
 
 ```{r}
 #DataExplorer::create_report(data)
@@ -196,7 +196,11 @@ A continuación se muestran los gráficos que permiten entender mejor la compara
 data %>% 
   filter(fecha >= "2021-10-31") %>% 
   select(-starts_with("fb")) %>%
-  DataExplorer::plot_qq(ncol = 2, title = "QQ-plots")
+  DataExplorer::plot_qq(
+    ncol = 2, 
+    nrow = 2, 
+    title = "QQ-plots"
+    )
 ```
 
 
@@ -230,10 +234,50 @@ heatmaply_cor(
 )
 ```
 
-Estas relaciones permiten tener una mayor idea de la consistencia y posibles variables que pueden usarse de manera conjunta para realizar un análisis predictivo. Es de particular interés conocer la relación existente entre la variable de respuesta **gtics_ingresos** y cada una de las variables presentes.
+Estas relaciones permiten tener una mayor idea de la consistencia y posibles variables que pueden usarse de manera conjunta para realizar un análisis predictivo. Es de particular interés conocer la relación existente entre la variable de respuesta **gtics_transacciones** y cada una de las variables presentes.
+
+A partir de una reunión de entendimiento, se obtiene nueva información en cuanto al conjunto de variables cuya campaña es de *"shopping"*. Esta campaña cambió su nombre a *rendimiento máximo*, por lo que vale la pena analizar el comportamiento de esta campaña incluyendo la información de su versión anterior. A continuación se muestra nuevamente el correlograma que considera este cambio:
 
 ```{r}
-M %>% .[,"gtics_ingresos"] %>%
+data %<>% 
+  rowwise() %>% 
+  mutate(
+    gads_n_rendimiento_máximo_v2 = sum(gads_n_rendimiento_máximo, gads_n_shopping, na.rm = T),
+    gads_clicks_rendimiento_máximo_v2 = sum(gads_clicks_rendimiento_máximo, gads_clicks_shopping, na.rm = T),
+    gads_impresiones_rendimiento_máximo_v2 = sum(gads_impresiones_rendimiento_máximo, gads_impresiones_shopping, na.rm = T),
+    gads_costo_rendimiento_máximo_v2 = sum(gads_costo_rendimiento_máximo, gads_costo_shopping, na.rm = T),
+    gads_conversiones_rendimiento_máximo_v2 = sum(gads_conversiones_rendimiento_máximo, gads_conversiones_shopping, na.rm = T),
+  ) %>% 
+  ungroup()
+  
+
+M2 = data %>%
+  filter(fecha >= "2021-10-31") %>% 
+  select(-ends_with("máximo"), -matches("shopping")) %>% 
+  select(-fecha, -starts_with("fb")) %>%
+  map_df(replace_na, replace = 0) %>% 
+  cor(use = "pairwise.complete.obs")
+```
+
+```{r, out.height="800px"}
+heatmaply_cor(
+  M2,
+  xlab = "",
+  ylab = "",
+  column_text_angle = 90,
+  k_col = 2,
+  k_row = 2,
+  scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+    low = scales::muted("red"),
+    high = scales::muted("blue"),
+    midpoint = 0,
+    limits = c(-1, 1)
+  )
+)
+```
+
+```{r}
+M2 %>% .[,"gtics_transacciones"] %>%
   as.data.frame() %>% 
   rownames_to_column() %>% 
   rename("Correlation" = ".", "Variable" = "rowname") %>% 
@@ -244,7 +288,7 @@ M %>% .[,"gtics_ingresos"] %>%
 
 En primer lugar, se proponen como variables explicativas a aquellas que tengan una correlación en valor absoluto mayor a 0.60, seguidas de aquellas cuya correlación sea mayor a 0.30. Finalmente, se explorará el impacto que pueda tener el resto de variables.
 
-Es de particular interés estudiar las variables que puedan conocerse de manera anticipada al día de la predicción, es decir, variables como **costo invertido** son en primer instancia de mayor valor debido a que esas cantidades sí pueden planearse de manera anticipada, mientras que variables como **total de productos vendidos** sí presentan una alta correlación, sin embargo, no puede conocerse de manera preciso el valor de esta medición con anticipación.
+Es de particular interés estudiar las variables que puedan conocerse de manera anticipada al día de la predicción, es decir, variables como **costo invertido** son en primer instancia de mayor valor debido a que esas cantidades sí pueden planearse de manera anticipada, mientras que variables como **total de productos vendidos** sí presentan una alta correlación, sin embargo, no puede conocerse de manera precisa el valor de esta medición con anticipación.
 
 ## Análisis multivariado gráfico
 
@@ -253,9 +297,13 @@ Habiendo observado la correlación analítica de manera conjunta entre variable 
 ```{r}
 data %>%
   filter(fecha >= "2021-10-31") %>% 
-  select(-fecha, -starts_with("fb"), -ends_with("shopping")) %>%
-  DataExplorer::plot_scatterplot(by = "gtics_ingresos")
+  select(-fecha, -starts_with("fb"), -ends_with("shopping"),-ends_with("máximo")) %>%
+  mutate(Transacciones = gtics_transacciones) %>% 
+  DataExplorer::plot_scatterplot(
+    by = "Transacciones"
+    )
 ```
+
 
 ## Reducción de dimensión
 
@@ -266,7 +314,7 @@ En las siguientes gráficas se presenta el porcentaje de información retenida a
 ```{r}
 data %>%
   filter(fecha >= "2021-10-31") %>% 
-  select(-fecha, -starts_with("fb")) %>%
+  select(-fecha, -starts_with("fb"), -ends_with("shopping"),-ends_with("máximo")) %>%
   na.omit() %>% 
   DataExplorer::plot_prcomp(
     variance_cap = 0.9,
@@ -274,6 +322,213 @@ data %>%
     nrow = 1
   )
 ```
+
+## Análisis Temporal
+
+Debido a que el objetivo del proyecto es realizar un pronóstico de las transacciones futuras con una semana y media de anticipación, resulta indispensable conocer principalemnte la relación entre las transacciones y el tiempo.
+
+Este análisis se realiza estudiando la estacionalidad por días de la semana, semana del año, mes y años.
+
+```{r}
+data %>%
+  filter(fecha >= "2021-10-31", fecha < '2022-06-01') %>% 
+  ggplot(aes(x = fecha, y = gtics_transacciones)) +
+  geom_line() +
+  scale_x_date(date_breaks = "1 month") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  scale_y_continuous(
+    labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
+  labs(
+    title = "Serie histórica de transacciones",
+    x = "Tiempo",
+    y = "Transacciones"
+    )
+```
+
+### Estacionalidad anual
+
+Al analizar los patrones de comportamiento de transacciones anuales de manera cíclica es posible obtener un mayor entendimiento sobre meses o temporadas clave. Estos periodos pueden tener consistentemente transacciones bajas o altas y al conocer mejor este comportamiento podrán plantearse distintas estrategias comerciales.
+
+```{r}
+library(patchwork)
+
+ts_full_data <- data %>% 
+  #filter(fecha >= "2021-10-31", fecha < '2022-06-01') %>%
+  tsibble::as_tsibble(
+  index = fecha,
+  .drop = F
+)
+
+full_ts_plot <- ts_full_data %>%
+  gg_season(gtics_transacciones, labels = "both", period = "year") +
+  scale_y_continuous(
+    labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
+  labs(
+    y = "Transacciones", x = "Trimsestres",
+    title = "Gráfico Estacional: Transacciones Elektra (Completo)"
+    )
+
+ts_plot <- ts_full_data %>%
+  filter(fecha >= "2021-10-31", fecha < '2022-06-01') %>%
+  gg_season(gtics_transacciones, labels = "both", period = "year") +
+  scale_y_continuous(
+    labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
+  labs(
+    y = "Transacciones", x = "Trimsestres",
+    title = "Gráfico Estacional"
+    )
+
+full_ts_plot
+```
+
+Este análisis de estacionalidad anual se realiza considerando toda la información disponible de transacciones y considerando la información parcial que puede asociarse a *Google Ads*.
+
+
+```{r}
+full_polar_plot <- ts_full_data %>%
+  #filter(dia >= '2021-11-17', dia < '2022-06-01') %>%
+  gg_season(gtics_transacciones, labels = "both", period = "year", polar = T) +
+  scale_y_continuous(
+    labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
+  labs(
+    y = "Transacciones", x = "Trimsestres",
+    title = "Gráfico Polar"
+    )
+
+ts_plot + full_polar_plot
+```
+
+
+### Estacionalidad semanal
+
+Otro tipo de análisis cíclico de gran valor es el realizado cada semana. Para distinguir la tendencia central y dispersión a lo largo del tiempo se realizan las siguientes gráficas:
+
+
+```{r}
+ts_full_data %>%
+  #filter(fecha >= "2021-10-31", fecha < '2022-06-01') %>%
+  gg_subseries(gtics_transacciones, period = "week") +
+  scale_y_continuous(
+    labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
+  labs(
+    y = "Transacciones", x = "Día de semana",
+    title = "Gráfico Estacional: Transacciones Elektra"
+  )
+```
+
+Es posible distinguir que no existe una diferencia notable en la tendencia de transacciones al agregarlos por día de la semana, no obstante, quizá la varianza sí podría presentar sutiles diferencias. Una prueba de hipótesis permitirá confirmar la proposición planteada.
+
+### Autocorrelación
+
+Las series de tiempo enfocadas en transacciones suelen en la gran mayoría de las ocasiones mostrar alta correlación con observaciones pasadas. Esto quiere decir que es común que las transacciones de un día se encuentren asociadas en volumen y tendencia con las transacciones de 1 día atrás o 7 días atrás. 
+
+Las funciones de autocorrelación y autocorrelación parcial permiten observar el grado de correlación con *n* días hacia atrás. Este análisis permite explorar hasta qué punto las transacciones en un momento del tiempo pueden servir para predecir transacciones futuras a corto, mediano o largo plazo.
+
+```{r}
+acf_plot <- ts_full_data %>% 
+  ACF(
+    y = gtics_transacciones,
+    lag_max = 15) %>% 
+  autoplot() +
+  ggtitle("Gráfico de Autocorrelación")
+
+pacf_plot <- ts_full_data %>% 
+  PACF(
+    y = gtics_transacciones,
+    lag_max = 15) %>% 
+  autoplot() +
+  ggtitle("Gráfico de Autocorrelación Parcial")
+
+acf_plot + pacf_plot
+```
+
+Otra forma de analizar la autocorrelación es mediante el gráfico de dispersión de puntos de las transacciones diarios y compararlos contra las transacciones de días pasados (lags):
+
+```{r}
+ts_full_data %>%
+  gg_lag(
+    y = gtics_transacciones,
+    geom="point",
+    #period = "week",
+    lags = 1:9
+    ) +
+  scale_y_continuous(
+    labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
+  labs(
+    y = "Transacciones", x = "Lag(Transacciones, n)",
+    title = "Exploración autorregresiva") +
+  theme(
+    axis.text.x=element_blank(),
+    axis.ticks.x=element_blank()
+    )
+```
+
+### Descomposición aditiva
+
+Para entender mejor el comportamiento de las transacciones, se procede a realizar una descomposición de la tendencia y la estacionalidad anual y semanal, de forma que se puedan observar los efectos que cada uno de estos factores aportan a la variación  de transacciones online.
+
+```{r}
+dcmp <- ts_full_data %>%
+  model(stl = STL(gtics_transacciones))
+
+#components(dcmp)
+
+trend_plot <- components(dcmp) %>%
+  as_tsibble() %>%
+  autoplot(gtics_transacciones, colour="gray") +
+  geom_line(aes(y=trend), colour = "blue") +
+  scale_y_continuous(
+    labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
+  labs(
+    y = "Transacciones",
+    title = "Tendencia de total de transacciones online"
+  )
+
+season_adjust_plot <- components(dcmp) %>%
+  as_tsibble() %>%
+  autoplot(gtics_transacciones, colour="gray") +
+  geom_line(aes(y=season_adjust), colour = "blue") +
+  scale_y_continuous(
+    labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
+  labs(
+    y = "Transacciones",
+    title = "Estacionalidad ajustada al total de transacciones online"
+  )
+
+trend_plot / season_adjust_plot
+```
+
+
+```{r, out.height="600px"}
+components(dcmp) %>% autoplot()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

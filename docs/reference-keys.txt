@@ -11,3 +11,8 @@ análisis-univariado
 análisis-de-correlación
 análisis-multivariado-gráfico
 reducción-de-dimensión
+análisis-temporal
+estacionalidad-anual
+estacionalidad-semanal
+autocorrelación
+descomposición-aditiva

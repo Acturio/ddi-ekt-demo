@@ -1,8 +1,8 @@
 # Insumos
 
-Para realizar el análisis de pronósticos de ventas (en un rango) de la plataforma e-commerce de Elektra Gt, a total plataforma, de manera diaria, se han identificado múltiples fuentes de información que reportan la actividad diaria de marketing a través de las redes sociales, así como el reporte de ventas diario. Las siguientes son fuentes usadas en esta primera fase del proyecto:
+Para realizar el análisis de pronósticos de transacciones (en un rango) de la plataforma e-commerce de Elektra Gt, a total plataforma, de manera diaria, se han identificado múltiples fuentes de información que reportan la actividad diaria de marketing a través de las redes sociales, así como el reporte de transacciones diario. Las siguientes son fuentes usadas en esta primera fase del proyecto:
 
-* **Google Analytics:** Servicio de seguimiento de actividad comercial para la página de Elektra Gt, la cual cuenta con información de las ventas diarias y resultados de las campañas implementadas cada día.
+* **Google Analytics:** Servicio de seguimiento de actividad comercial para la página de Elektra Gt, la cual cuenta con información de las transacciones diarias y resultados de las campañas implementadas cada día.
 
 * **Google Ads:** Servicio de seguimiento de los resultados de actividad diaria publicitaria mediante Google.
 

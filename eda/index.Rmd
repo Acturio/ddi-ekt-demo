@@ -43,9 +43,9 @@ knitr::include_graphics("img/00-intro/forecasting.jpeg")
 
 Los insumos entregados por parte de *DDI* tienen la finalidad de ser usados para desarrollar las actividades que se han planteado en el objetivo del proyecto, las cuales se enlistan a continuación:
 
-1. **Predicción:** predecir las ventas (en un rango) de e-commerce de Elektra, a total  plataforma, diarias para una semana (de lunes a domingo), con cuatro días de anticipación (el jueves previo al primer día de predicción). 
+1. **Predicción:** predecir las ventas en número de transacciones (en un rango) de e-commerce de Elektra, a total  plataforma, diarias para una semana (de lunes a domingo), con cuatro días de anticipación (el jueves previo al primer día de predicción). 
 
-2. **Data Storytelling:** producir insights sobre las ventas y las variables que afectan a éstas mediante gráficas comparativas multivariadas.
+2. **Data Storytelling:** producir insights sobre las transacciones y las variables que afectan a éstas mediante gráficas comparativas multivariadas.
 
 3. **Machine Learning:** Automatizar el pipeline de ingesta y procesamiento de datos y de ejecución del modelo de predicción  de ventas sobre la infraestructura (Data Warehouse) de *DDI*.
 
