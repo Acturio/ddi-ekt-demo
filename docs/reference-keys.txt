@@ -1,0 +1,13 @@
+insumos
+google-ads
+facebook-ads
+google-analytics
+productos-y-ventas
+sesiones-y-usuarios
+análisis-exploratorio
+nomenclatura
+análisis-de-disponibilidad
+análisis-univariado
+análisis-de-correlación
+análisis-multivariado-gráfico
+reducción-de-dimensión
