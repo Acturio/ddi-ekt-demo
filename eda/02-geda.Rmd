@@ -49,6 +49,16 @@ Aunque originalmente no se observaron muchos datos faltantes cuando se realiza e
 Al considerar el periodo completo del 30 de septiembre de 2019 al 13 de junio de 2022, se cuenta con un volumen de datos faltantes considerable, mismo que se representa en las siguientes gráficas:
 
 ```{r}
+library(tidyverse)
+library(corrplot)
+library(heatmaply)
+library(fpp3)
+library(tsibble)
+library(DataExplorer)
+library(forecast)
+library(skimr)
+library(kableExtra)
+
 fb_agg <- fb %>%
   group_by(dia = Dia, objetivo_fb = Objetivo) %>%
   summarise(
@@ -153,12 +163,11 @@ knitr::include_graphics("img/01-eda/missings_facebook.png")
 Es importante la cantidad de datos faltantes provenientes de Google Ads, por lo que se revisará posteriormente la factibilidad de conseguir dicha información. Una manera fácil de entender la magnitud de la falta de información se logra a través del siguiente gráfico:
 
 ```{r}
-
 data %>% 
 ggplot(aes(x = fecha, y = gtics_transacciones)) +
   geom_col(fill = "red", color = "red") +
   geom_vline(xintercept = ymd("2019-10-30"), colour = "blue") +
-  geom_vline(xintercept = ymd("2021-11-22"), colour = "blue") +
+  geom_vline(xintercept = ymd("2022-06-16"), colour = "blue") +
   geom_vline(xintercept = ymd("2021-10-31"), colour = "green") +
   geom_vline(xintercept = ymd("2022-06-13"), colour = "green") +
   scale_x_date(date_breaks = "1 month") +
@@ -173,7 +182,7 @@ ggplot(aes(x = fecha, y = gtics_transacciones)) +
 ::: {.infobox .note data-latex="{note}"}
 **¡Toma de decisión!**
 
-Dada esta información disponible... Se comenzará a trabajar con Google Ads y Google Analytics para el periodo del 1° de noviembre de 2021 a la fecha, sin embargo, es áltamente deseable contar con la información completa para extraer el mayor valor de la información recolactada.
+Dada esta información disponible... Se comenzará a trabajar la información disponible en el periodo del 1° de mayo de 2020 al 1° de junio de 2022, sin embargo, es áltamente deseable contar con la información completa para extraer el mayor valor de la información recolactada.
 :::
 
 ## Análisis univariado
@@ -183,8 +192,8 @@ Con el objetivo de conocer la distribución univariada de cada una de las caract
 ```{r}
 #DataExplorer::create_report(data)
 data %>% 
-  filter(fecha >= "2021-10-31") %>% 
-  select(-starts_with("fb")) %>%
+  filter(fecha >= "2020-05-01") %>% 
+  #select(-starts_with("fb")) %>%
   DataExplorer::plot_histogram(ncol = 2, title = "Univariate Histograms")
 ```
 
@@ -194,8 +203,8 @@ A continuación se muestran los gráficos que permiten entender mejor la compara
 
 ```{r}
 data %>% 
-  filter(fecha >= "2021-10-31") %>% 
-  select(-starts_with("fb")) %>%
+  filter(fecha >= "2020-05-01") %>% 
+  #select(-starts_with("fb")) %>%
   DataExplorer::plot_qq(
     ncol = 2, 
     nrow = 2, 
@@ -210,8 +219,8 @@ Una vez analizada la distribución unitaria de cada una de las variables present
 
 ```{r}
 M = data %>%
-  filter(fecha >= "2021-10-31") %>% 
-  select(-fecha, -starts_with("fb")) %>%
+  filter(fecha >= "2020-05-01") %>% 
+  select(-fecha, -ends_with("lead_generation"), -ends_with("messages")) %>%
   cor(use = "pairwise.complete.obs")
 
 ```
@@ -252,9 +261,9 @@ data %<>%
   
 
 M2 = data %>%
-  filter(fecha >= "2021-10-31") %>% 
+  filter(fecha >= "2020-05-01") %>% 
   select(-ends_with("máximo"), -matches("shopping")) %>% 
-  select(-fecha, -starts_with("fb")) %>%
+  select(-fecha, -ends_with("lead_generation"), -ends_with("messages")) %>%
   map_df(replace_na, replace = 0) %>% 
   cor(use = "pairwise.complete.obs")
 ```
@@ -296,8 +305,8 @@ Habiendo observado la correlación analítica de manera conjunta entre variable 
 
 ```{r}
 data %>%
-  filter(fecha >= "2021-10-31") %>% 
-  select(-fecha, -starts_with("fb"), -ends_with("shopping"),-ends_with("máximo")) %>%
+  filter(fecha >= "2020-05-01") %>% 
+  select(-fecha, -ends_with("lead_generation"), -ends_with("messages"), -ends_with("shopping"),-ends_with("máximo")) %>%
   mutate(Transacciones = gtics_transacciones) %>% 
   DataExplorer::plot_scatterplot(
     by = "Transacciones"
@@ -313,8 +322,8 @@ En las siguientes gráficas se presenta el porcentaje de información retenida a
 
 ```{r}
 data %>%
-  filter(fecha >= "2021-10-31") %>% 
-  select(-fecha, -starts_with("fb"), -ends_with("shopping"),-ends_with("máximo")) %>%
+  filter(fecha >= "2020-05-01") %>% 
+  select(-fecha, -ends_with("lead_generation"), -ends_with("messages"), -ends_with("shopping"),-ends_with("máximo")) %>%
   na.omit() %>% 
   DataExplorer::plot_prcomp(
     variance_cap = 0.9,
@@ -327,12 +336,13 @@ data %>%
 
 Debido a que el objetivo del proyecto es realizar un pronóstico de las transacciones futuras con una semana y media de anticipación, resulta indispensable conocer principalemnte la relación entre las transacciones y el tiempo.
 
-Este análisis se realiza estudiando la estacionalidad por días de la semana, semana del año, mes y años.
+Este análisis se realiza estudiando la estacionalidad por días de la semana, semana del año, mes y años. 
 
 ```{r}
-data %>%
-  filter(fecha >= "2021-10-31", fecha < '2022-06-01') %>% 
-  ggplot(aes(x = fecha, y = gtics_transacciones)) +
+original_ts_plot <- data %>%
+  #filter(fecha >= "2020-05-01", fecha < '2022-06-01') %>% 
+  rename(transacciones = gtics_transacciones) %>% 
+  ggplot(aes(x = fecha, y = transacciones)) +
   geom_line() +
   scale_x_date(date_breaks = "1 month") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
@@ -343,31 +353,78 @@ data %>%
     x = "Tiempo",
     y = "Transacciones"
     )
+
+plotly::ggplotly(original_ts_plot)
 ```
 
 ### Estacionalidad anual
 
 Al analizar los patrones de comportamiento de transacciones anuales de manera cíclica es posible obtener un mayor entendimiento sobre meses o temporadas clave. Estos periodos pueden tener consistentemente transacciones bajas o altas y al conocer mejor este comportamiento podrán plantearse distintas estrategias comerciales.
 
+Debido a la consistencia mostrada en los datos a través del tiempo, se toma la decisión de trabajar con información posterior al 1° de mayo de 2020 y hasta el 1° de junio de 2022.
+
 ```{r}
 library(patchwork)
 
 ts_full_data <- data %>% 
-  #filter(fecha >= "2021-10-31", fecha < '2022-06-01') %>%
+  filter(fecha >= "2020-05-01", fecha < '2022-06-01') %>%
   tsibble::as_tsibble(
   index = fecha,
   .drop = F
 )
 
+ts_full_data %>% saveRDS("data/ts_full_data.rds")
+
 full_ts_plot <- ts_full_data %>%
-  gg_season(gtics_transacciones, labels = "both", period = "year") +
+  rename(transacciones = gtics_transacciones) %>% 
+  gg_season(transacciones, labels = "left", period = "year") +
   scale_y_continuous(
     labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
   labs(
-    y = "Transacciones", x = "Trimsestres",
-    title = "Gráfico Estacional: Transacciones Elektra (Completo)"
+    y = "Transacciones", x = "Trimestres",
+    title = "Gráfico Estacional",
+    subtitle = "Transacciones Elektra (Completo)"
     )
 
+plotly::ggplotly(full_ts_plot) %>% 
+  layout(title = list(
+    text = paste0('Gráfico Estacional',
+                  '<br>', 
+                  '<sup>', 'Transacciones Elektra (Completo)','</sup>')
+    )
+  )
+#full_ts_plot
+```
+
+```{r}
+ts_full_data %>%
+  as_tibble() %>% 
+  rename(transacciones = gtics_transacciones) %>%
+  select(fecha, transacciones) %>% 
+  mutate(año = year(fecha)) %>% 
+  group_by(año) %>% 
+  summarise(
+    `transacción media` = mean(transacciones, na.rm = T),
+    `desviación media` = sd(transacciones, na.rm = T)/(sqrt(n())),
+    .groups = "drop"
+  ) %>% 
+  mutate(
+    `Lim inf` = `transacción media` - qnorm(1-0.10/2)*`desviación media`,
+    `Lim sup` = `transacción media` + qnorm(1-0.10/2)*`desviación media`,
+    lag1 = lag(`transacción media`),
+    `cambio %` = (`transacción media`/lag1-1)*100
+    ) %>% 
+  select(-lag1) %>% 
+  mutate_if(is.numeric, round, digits = 1) %>% 
+  DT::datatable(options = list(dom = 't'))
+
+```
+
+Se puede apreciar en la tabla anterior que al considerar intervalos de confianza al 90% no existe una diferencia significativa en la media de transacciones anuales. El cambio porcentual entre un año y otro no es del todo comparable debido a que no son años completos. Mientras que en 2020 se analiza información posterior al 1° de mayo, en 2022 se cuenta con información hasta el 1° de mayo.
+
+El siguiente análisis de estacionalidad anual se realiza considerando la intersección de información de transacciones y la información disponible de *Google Ads*.
+
+```{r}
 ts_plot <- ts_full_data %>%
   filter(fecha >= "2021-10-31", fecha < '2022-06-01') %>%
   gg_season(gtics_transacciones, labels = "both", period = "year") +
@@ -378,15 +435,9 @@ ts_plot <- ts_full_data %>%
     title = "Gráfico Estacional"
     )
 
-full_ts_plot
-```
 
-Este análisis de estacionalidad anual se realiza considerando toda la información disponible de transacciones y considerando la información parcial que puede asociarse a *Google Ads*.
-
-
-```{r}
 full_polar_plot <- ts_full_data %>%
-  #filter(dia >= '2021-11-17', dia < '2022-06-01') %>%
+  #filter(fecha >= '2021-10-31', fecha < '2022-06-01') %>%
   gg_season(gtics_transacciones, labels = "both", period = "year", polar = T) +
   scale_y_continuous(
     labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
@@ -397,6 +448,14 @@ full_polar_plot <- ts_full_data %>%
 
 ts_plot + full_polar_plot
 ```
+
+El gráfico polar anterior permite detectar patrones de estacionalidad en fechas importantes. Entre los principales hallazgos, se encuentra:
+
+* El periodo correspondiente a la segunda mitad del mes de Noviembre.
+
+* Semana alrededor del 10 de Mayo
+
+* Periodo (aproximado) correspondiente a la segunda mitad del mes de Julio.
 
 
 ### Estacionalidad semanal
@@ -416,7 +475,88 @@ ts_full_data %>%
   )
 ```
 
-Es posible distinguir que no existe una diferencia notable en la tendencia de transacciones al agregarlos por día de la semana, no obstante, quizá la varianza sí podría presentar sutiles diferencias. Una prueba de hipótesis permitirá confirmar la proposición planteada.
+El gráfico anterior nos permite conocer la serie histórica de cada día de la semana. Adicionalmente se muestra la línea de transacciones promedio. Es importante mencionar que los días de gran volumen de ventas no debe asociarse al día de la semana per-se, sino al día festivo (10 de mayo, 25 de diciembre, etc) en que ocurre, el cual puede ser distinto cada año.
+
+```{r}
+mean_weekday <- ts_full_data %>% 
+  as_tibble() %>% 
+  mutate(weekday = lubridate::wday(fecha, label = T, abbr = F)) %>% 
+  #summarise(media = mean(gtics_transacciones, na.rm = T))
+  dplyr::group_by(`día semana` = weekday) %>% 
+  dplyr::summarise(
+    `transacción media` = mean(gtics_transacciones, na.rm = T),
+    `desviación media` = sd(gtics_transacciones, na.rm = T)/(sqrt(n())),
+    ) %>% 
+  mutate(
+    `Lim inf` = `transacción media` - qnorm(1-0.10/2)*`desviación media`,
+    `Lim sup` = `transacción media` + qnorm(1-0.10/2)*`desviación media`,
+  ) %>% 
+  dplyr::arrange(desc(`transacción media`)) %>% 
+  dplyr::mutate_if(is.numeric, round, digits = 2) 
+
+mean_weekday %>% DT::datatable(options = list(dom = 't'))
+
+```
+
+En la tabla anterior se muestra analíticamente la media de las transacciones y la desviación media. Mediante estos valores, se construyen posteriormente intervalos de confianza que permitirán conocer la significancia en diferencia de transacciones por día de la semana.
+
+```{r}
+#119.73
+
+ic_weekday_90 <- mean_weekday %>%
+  #rename(weekday = `día semana`)
+  ggplot(aes(x = `día semana`, y = `transacción media`)) +
+  geom_point() +
+  geom_errorbar(
+    aes(ymin = `transacción media` - qnorm(1-0.1/2)*`desviación media`,
+        ymax = `transacción media` + qnorm(1-0.1/2)*`desviación media`),
+    width = 0.2) +
+  geom_hline(yintercept = 119.73, colour = "red") +
+  ggtitle("Transacciones por día de la semana, IC(90%)")
+
+ic_weekday_85 <- mean_weekday %>%
+  #rename(weekday = `día semana`)
+  ggplot(aes(x = `día semana`, y = `transacción media`)) +
+  geom_point() +
+  geom_errorbar(
+    aes(ymin = `transacción media` - qnorm(1-0.20/2)*`desviación media`,
+        ymax = `transacción media` + qnorm(1-0.20/2)*`desviación media`),
+    width = 0.2) +
+  geom_hline(yintercept = 119.73, colour = "red") +
+  ggtitle("Transacciones por día de la semana, IC(80%)")
+
+ic_weekday_90 / ic_weekday_85
+```
+
+Es posible distinguir que existe una ligera diferencia en la media de transacciones al agregarlos por día de la semana, aunque con 90% de confianza no es lo suficiente como para afirmar que son significativamente distintas. Por otro lado, el intervalo de confianza al 80% del día miércoles se encuentra por debajo de la media global, por lo que en este caso sí contamos con una diferencia importante.
+
+Es de interés adicional analizar la tendencia y varianza, pues podrían presentar sutiles diferencias también. Una prueba de hipótesis permitirá confirmar la proposición planteada.
+
+```{r}
+dfs <- ts_full_data %>% 
+  as_tibble() %>% 
+  mutate(weekday = lubridate::wday(fecha, label = T, abbr = F)) %>% 
+  select(fecha, weekday, gtics_transacciones) %>% 
+  dplyr::group_split(weekday) %>% 
+  map(~mutate(.x, trend = row_number())) 
+
+days_of_week <- dfs %>% map_df(~distinct(.x, weekday)) %>% pull()
+
+dfs %>% 
+  map(~lm(data = .x, gtics_transacciones~ trend)) %>% 
+  map_df(tidy) %>% 
+  mutate(weekday = rep(days_of_week, each = 2)) %>% 
+  filter(term == "trend") %>% 
+  arrange(desc(estimate)) %>% 
+  select(-c(statistic, term)) %>% 
+  relocate(weekday, .before = estimate) %>% 
+  dplyr::mutate_if(is.numeric, round, digits = 4) %>% 
+  DT::datatable(options = list(dom = 't'))
+```
+
+Debido a la gran variación en la tendencia, puede apreciarse que no existe un a diferencia significativa al analizarla por día de la semana.
+
+
 
 ### Autocorrelación
 
@@ -449,7 +589,6 @@ ts_full_data %>%
   gg_lag(
     y = gtics_transacciones,
     geom="point",
-    #period = "week",
     lags = 1:9
     ) +
   scale_y_continuous(
@@ -470,8 +609,6 @@ Para entender mejor el comportamiento de las transacciones, se procede a realiza
 ```{r}
 dcmp <- ts_full_data %>%
   model(stl = STL(gtics_transacciones))
-
-#components(dcmp)
 
 trend_plot <- components(dcmp) %>%
   as_tsibble() %>%

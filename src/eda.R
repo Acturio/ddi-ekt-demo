@@ -8,8 +8,39 @@ library(forecast)
 library(skimr)
 library(flipTime)
 
-fb <- read_csv("data/Historico_FB_Ads_Elektra_v2.csv",
-               locale = locale(encoding = "UTF-8"), na=c("","NA","null"))
+fb1 <- read_csv(
+  "data/Historico_FB_Ads_Elektra_v2.csv",
+  locale = locale(encoding = "UTF-8"), na=c("","NA","null"),
+  col_types = "ccDddcdddDD"
+  )
+
+fb2 <- read_csv(
+  "data/Historico_FB_Ads_Elektra_Faltante.csv",
+  locale = locale(encoding = "UTF-8"), na=c("","NA","null"),
+  col_types = "cccddcdddcc") %>%
+  mutate(
+    Dia = dmy(Dia),
+    Inicio_informe = dmy(Inicio_informe),
+    Fin_informe = dmy(Fin_informe)
+    )
+
+fb3 <- read_csv(
+  "data/Historico_FB_Ads_Elektra_Faltante_2daParte.csv",
+  locale = locale(encoding = "UTF-8"), na=c("","NA","null"),
+  col_types = "cccddcdddcc") %>%
+  mutate(
+    Dia = dmy(Dia),
+    Inicio_informe = dmy(Inicio_informe),
+    Fin_informe = dmy(Fin_informe)) %>%
+  filter(Dia >= '2021-11-23')
+
+skimr::skim(fb1)
+skimr::skim(fb3)
+skimr::skim(fb2)
+
+fb <- bind_rows(fb1, fb2, fb3)
+
+
 
 gads <- read_csv("data/2022_Data_GoogleAds_InfoAcumulado.csv", skip = 2,
                  locale = locale(decimal_mark = ",", grouping_mark = "."), na=c("","NA","null")) %>%

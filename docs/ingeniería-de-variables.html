@@ -4,18 +4,18 @@
 
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <title>Page not found | Elektra: Forecasting DEMO</title>
-  <meta name="description" content="Page not found | Elektra: Forecasting DEMO" />
+  <title>Capítulo 3 Ingeniería de variables | Elektra: Forecasting DEMO</title>
+  <meta name="description" content="Capítulo 3 Ingeniería de variables | Elektra: Forecasting DEMO" />
   <meta name="generator" content="bookdown 0.26 and GitBook 2.6.7" />
 
-  <meta property="og:title" content="Page not found | Elektra: Forecasting DEMO" />
+  <meta property="og:title" content="Capítulo 3 Ingeniería de variables | Elektra: Forecasting DEMO" />
   <meta property="og:type" content="book" />
   
   
   
 
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Page not found | Elektra: Forecasting DEMO" />
+  <meta name="twitter:title" content="Capítulo 3 Ingeniería de variables | Elektra: Forecasting DEMO" />
   
   
   
@@ -28,7 +28,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   
   
-
+<link rel="prev" href="análisis-exploratorio.html"/>
 
 <script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
@@ -138,18 +138,38 @@
           <div class="page-inner">
 
             <section class="normal" id="section-">
-<div id="page-not-found" class="section level1">
-<h1>Page not found</h1>
-<p>The page you requested cannot be found (perhaps it was moved or renamed).</p>
-<p>You may want to try searching to find the page's new location, or use
-the table of contents to find the page you are looking for.</p>
+<div id="ingeniería-de-variables" class="section level1 hasAnchor" number="3">
+<h1><span class="header-section-number">Capítulo 3</span> Ingeniería de variables<a href="ingeniería-de-variables.html#ingeniería-de-variables" class="anchor-section" aria-label="Anchor link to header"></a></h1>
+<p>Para crear un modelo que permita obtener las mejores predicciones posibles, es necesario explotar la información disponible que permita encontrar los patrones relevantes de predicción. Dichos patrones pueden encontrarse en los datos originales, sin embargo, también existen otras formas de encontrar variables importantes de predicción mediante:</p>
+<ul>
+<li><p>Transformación de las variables originales</p></li>
+<li><p>Creación de nuevas variables a partir de combinación de las originales</p></li>
+<li><p>Análisis de datos anteriores (lags 1 día, 7 días, 1 año, etc)</p></li>
+<li><p>Datos externos (economía local, análisis de la competencia, etc)</p></li>
+</ul>
+<p>A partir del análisis de las nuevas variables, será posible definir un conjunto de datos que permita realizar los pronósticos a lo largo del tiempo.</p>
+<div id="variables-temporales" class="section level2 hasAnchor" number="3.1">
+<h2><span class="header-section-number">3.1</span> Variables temporales<a href="ingeniería-de-variables.html#variables-temporales" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Las variables temporales permiten asociar nueva información que se encuentra implícita en las fechas, por lo que naturalmente son las primeras que deben considerarse, entre ellas se encuentran:</p>
+<ul>
+<li><p>Día de la semana</p></li>
+<li><p>Mes del año</p></li>
+<li><p>Año</p></li>
+<li><p>Fechas festivas</p></li>
+<li><p>etc</p></li>
+</ul>
+<p>Un caso particular de interés en la ingeniería de datos temporales, es considerar los lags-temporales de días, semanas e incluso años. Debido a la estacionalidad en las ventas, las transacciones ocurridas 1 a 15 días antes, así como las ventas del año pasado pueden servir para predecir las transacciones actuales. El siguiente grafico muestra las transacciones a lo largo del tiempo, así como las ocurridas el año anterior:</p>
+<p><img src="ddi_elektra_demo_eda_files/figure-html/unnamed-chunk-50-1.png" width="672" /></p>
+<p>Al calcular la correlación entre las ventas actuales y las ocurridas el año pasado, se reporta una correlación de 0.42</p>
+
+</div>
 </div>
             </section>
 
           </div>
         </div>
       </div>
-
+<a href="análisis-exploratorio.html" class="navigation navigation-prev navigation-unique" aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
 
     </div>
   </div>

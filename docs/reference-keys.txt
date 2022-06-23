@@ -16,3 +16,5 @@ estacionalidad-anual
 estacionalidad-semanal
 autocorrelación
 descomposición-aditiva
+ingeniería-de-variables
+variables-temporales
