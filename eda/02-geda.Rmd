@@ -422,6 +422,36 @@ ts_full_data %>%
 
 Se puede apreciar en la tabla anterior que al considerar intervalos de confianza al 90% no existe una diferencia significativa en la media de transacciones anuales. El cambio porcentual entre un año y otro no es del todo comparable debido a que no son años completos. Mientras que en 2020 se analiza información posterior al 1° de mayo, en 2022 se cuenta con información hasta el 1° de mayo.
 
+A fin de comparar el desempeño de las transacciones de ecommerce de una manera más justa, se realiza el análisis de la diferencia de transacciones realizadas tomando en cuenta el procentaje de avance del año. Esto, debido a que en 2022 no se ha llegado a la etapa del año donde se realizan más transacciones:
+
+```{r}
+ts_full_data %>%
+  as_tibble() %>% 
+  rename(transacciones = gtics_transacciones) %>%
+  select(fecha, transacciones) %>% 
+  mutate(año = year(fecha)) %>% 
+  filter(
+    año >= 2021,
+    month(fecha) < 6
+  ) %>% 
+  group_by(año) %>% 
+  summarise(
+    `transacción media` = mean(transacciones, na.rm = T),
+    `desviación media` = sd(transacciones, na.rm = T)/(sqrt(n())),
+    .groups = "drop"
+  ) %>% 
+  mutate(
+    `Lim inf` = `transacción media` - qnorm(1-0.10/2)*`desviación media`,
+    `Lim sup` = `transacción media` + qnorm(1-0.10/2)*`desviación media`,
+    lag1 = lag(`transacción media`),
+    `cambio %` = (`transacción media`/lag1-1)*100
+    ) %>% 
+  select(-lag1) %>% 
+  mutate_if(is.numeric, round, digits = 1) %>% 
+  DT::datatable(options = list(dom = 't'))
+```
+De esta manera sí se puede apreciar que al comparar los años 2021 y 2022, hasta el 31 de mayo se cuenta con un aumento del 1% en transacciones medias. 
+
 El siguiente análisis de estacionalidad anual se realiza considerando la intersección de información de transacciones y la información disponible de *Google Ads*.
 
 ```{r}

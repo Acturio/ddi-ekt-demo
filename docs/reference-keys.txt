@@ -16,5 +16,10 @@ estacionalidad-anual
 estacionalidad-semanal
 autocorrelación
 descomposición-aditiva
+forecasting
 ingeniería-de-variables
 variables-temporales
+agregaciones-por-ventana
+partición
+ajuste-de-modelos
+selección-de-mejor-modelo
