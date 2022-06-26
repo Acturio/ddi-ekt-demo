@@ -73,6 +73,7 @@ library(timetk)
 library(modeltime)
 library(sknifedatar)
 library(gt)
+library(sknifedatar)
 
 ts_full_data <- readRDS("data/ts_full_data.rds")
 
@@ -126,21 +127,14 @@ ts_full_data %>%
 
 Al calcular la correlación entre las ventas actuales y las ocurridas el año pasado, se reporta una correlación de 0.42, lo que sugiere que sí existe una mediana correlación con las transacciones del año anterior.
 
-### Agregaciones por ventana
+<!-- ### Agregaciones por ventana -->
+<!-- Este tipo de de variables creadas se realiza mediante una agregación que puede ser el promedio, valores mínimo/máximo, desviaciones estandar, etc. sobre un intervalo de tiempo hacia atrás. El objetivo de estas variables es conocer la tendencia de los últimos días. Por ejemplo:  -->
+<!-- * El promedio de transacciones de los últimos 15 días -->
+<!-- * El rango entre los valores mínimo y máximo de transacciones en los últimos 7 días -->
+<!-- * Suma de transacciones de los últimos 10 días -->
+<!-- * etc. -->
 
-Este tipo de de variables creadas se realiza mediante una agregación que puede ser el promedio, valores mínimo/máximo, desviaciones estandar, etc. sobre un intervalo de tiempo hacia atrás. El objetivo de estas variables es conocer la tendencia de los últimos días. Por ejemplo: 
-
-* El promedio de transacciones de los últimos 15 días
-
-* El rango entre los valores mínimo y máximo de transacciones en los últimos 7 días
-
-* Suma de transacciones de los últimos 10 días
-
-* etc.
-
-
-
-```{r}
+```{r, eval=FALSE}
 library(zoo)
 
 ts_full_data %>% 
@@ -159,6 +153,8 @@ ts_full_data %>%
 ```
 
 ## Partición
+
+El proceso para desarrollar un modelo predictivo implica necesariamente particionar la información de modo que un porcentaje sea usado para su la detección de comportamiento y patrones relevantes para la predicción y el resto de la información sea usado para realizar predicciones. A estas particiones se les conoce como partición de entrenamiento (training) y de prueba (testing). En este segundo conjunto sí se conoce la respuesta a predecir, pero no se usa en el entrenamiento. Su uso es mediante *backtesting*. Se realizan los pronósticos sobre el periodo de tiempo disponible y posteriormente se comparan las predicciones con el valor real para determinar el mejor modelo a seleccionar y estimar el error futuro. 
 
 ```{r}
 model_data <- ts_full_data %>% 
@@ -180,13 +176,15 @@ model_data <- ts_full_data %>%
 
 model_data %>% 
   as_tibble() %>% 
-  initial_time_split(prop = 0.8) %>% 
+  initial_time_split(prop = 0.9) %>% 
   tk_time_series_cv_plan() %>% 
   plot_time_series_cv_plan(fecha, transacciones)
 ```
-
+En el gráfico anterior se presenta la partición del conjunto de información disponible. A esta partición le corresponde el 90% a entrenamiento y el resto a prueba.
 
 ## Ajuste de modelos
+
+Realizando la ingeniería de variables para crear características de interés que pueden aportar valor a la predicción, se muestra a continuación el conjunto de variables que son usadas como insumo para los modelos predictivos.
 
 ```{r}
 model_data2 <- model_data %>% 
@@ -208,6 +206,19 @@ juice(prep(recipe_base)) %>%
   glimpse()
 ```
 
+Los modelos que serán ajustados y posteriormente comparados en su desempeño son:
+
+* Modelo SARIMA con errores boosting
+
+* Modelo Prophet con errores boosting
+
+* Modelo Prophet con error de tendencia logística boosting
+
+* Modelo multivariado adaptativo con splines de regresión (MARS)
+
+* Red neuronal artificial autoregresiva (NNETAR)
+
+Estos 5 modelos se ponen a prueba, mostrando los siguientes resultados en el periodo de prueba.
 
 ```{r}
 auto_arima_boost <- arima_boost(
@@ -289,6 +300,7 @@ modeltime_wfs_forecast(
     .conf_hi = exp(.conf_hi),
   ) %>% 
   plot_modeltime_forecast(
+    .conf_interval_show = FALSE,
     .conf_interval_alpha = 0.05,
     .plotly_slider = T
   )
@@ -302,13 +314,15 @@ wffits %>%
   separate(.model_id, c('recipe', 'model'), sep='_M_', remove=FALSE) %>% 
   select(-.model_id, -recipe) %>% 
   arrange(rmse) %>% 
-  mutate_if(is.numeric, round, digits = 4) %>% 
+  mutate_if(is.numeric, round, digits = 2) %>% 
   gt() %>% 
   tab_header(title='Evaluación de modelos')
 ```
 
 
 ## Selección de mejor modelo
+
+Al conocer las métricas de desempeño de cada uno de los modelos, es posible discernir cuáles de ellos tienen mayor potencial y deben ser ajustados con mayor precisión. Una segunda iteración de ajuste de modelos y estimación de error con intervalos de confianza al 95% sobre el conjunto de pruebas arroja los siguientes resultados
 
 
 ```{r}
@@ -362,6 +376,7 @@ model_data2 %>% select(fecha, transacciones) %>%
   select(-.estimator) %>% 
   pivot_wider(names_from = .metric, values_from = .estimate) %>% 
   arrange(rmse) %>% 
+  select(model, mae, mape, mase, smape,	rmse, rsq) %>% 
   gt() %>% 
   tab_header(title='Evaluación final de modelos')
   

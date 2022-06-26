@@ -187,30 +187,137 @@ Dada esta información disponible... Se comenzará a trabajar la información di
 
 ## Análisis univariado
 
-Con el objetivo de conocer la distribución univariada de cada una de las características asociadas a las transacciones, se crean gráficos de histogramas, las cuales se presentan a continuación:
+Con el objetivo de conocer la distribución univariada de la variable de interés y de cada una de las características asociadas a las transacciones, se crean gráficos de histogramas, los cuales se presentan a continuación:
+
+```{r} 
+library(patchwork)
+
+hist_trans <- data %>% 
+  filter(fecha >= "2020-05-01") %>% 
+  ggplot(aes(x = gtics_transacciones)) +
+  geom_histogram(color = "blue", fill = "lightblue") +
+  geom_vline(aes(xintercept = median(data$gtics_transacciones), color = "Mediana")) +
+  geom_vline(aes(xintercept = mean(data$gtics_transacciones), color = "Media")) +
+  scale_color_manual(name = "Estadísticas", values = c("Media" = "black", "Mediana" = "red")) +
+  labs(title = "Histograma de transacciones", x = "Transacciones", y = "Conteos")
+
+hist_log_trans <- data %>% 
+  filter(fecha >= "2020-05-01") %>% 
+  ggplot(aes(x = log(gtics_transacciones+1))) +
+  geom_histogram(color = "blue", fill = "lightblue") +
+  geom_vline(aes(xintercept = log(median(data$gtics_transacciones)+1), color = "Mediana")) +
+  geom_vline(aes(xintercept = log(mean(data$gtics_transacciones)+1), color = "Media")) +
+  scale_color_manual(name = "Estadísticas", values = c("Media" = "black", "Mediana" = "red")) +
+  labs(title = "Histograma de transacciones", subtitle =  "(Escala logarítmica)", 
+       x = "Transacciones", y = "Conteos")
+
+hist_trans / hist_log_trans
+```
+
+A través de los histrogramas se observa que existe una cola pesada del lado derecho, el cual corresponde al alto número de transacciones que ocurre en la temporada del *buen fin* y *black friday*.
+
+A través de los siguientes gráficos se analiza la distribución de las transacciones tanto en su escala original como en la escala logarítmica, mostrando la media, percentiles 10, 25, 50, 75, 90 y puntos que son considerados atípicos. 
+
+```{r, out.height="400pt"} 
+data_summary <- function(x) {
+   m <- mean(x)
+   ymin <- quantile(x, probs = 0.1) %>% unname()
+   ymax <- quantile(x, probs = 0.9) %>% unname()
+   return(c("y"=m,"ymin"=ymin,"ymax"=ymax))
+}
+
+violin_trans <- data %>% 
+  filter(fecha >= "2020-05-01") %>% 
+  ggplot(aes(x = 1, y = gtics_transacciones)) +
+  geom_violin(fill = "purple") +
+  geom_boxplot(width=0.1) +
+  stat_summary(fun.data=data_summary, color = "red") +
+  coord_flip() +
+  scale_y_continuous(n.breaks = 10) +
+  theme(axis.text.y=element_blank(), axis.ticks.y=element_blank()) +
+  labs(title = "Distribución de transacciones", y = "Transacciones", x = "")
+
+  
+violin_log_trans <- data %>% 
+  filter(fecha >= "2020-05-01") %>% 
+  ggplot(aes(x = 1, y = log(gtics_transacciones+1))) +
+  geom_violin(fill = "purple") +
+    geom_boxplot(width=0.1) +
+  stat_summary(fun.data=data_summary, color = "red") +
+  coord_flip() +
+  scale_y_continuous(n.breaks = 10) +
+  theme(axis.text.y=element_blank(), axis.ticks.y=element_blank()) +
+  labs(title = "Distribución de transacciones", subtitle =  "(Escala logarítmica)",
+       y = "Transacciones", x = "")
+
+
+violin_trans + violin_log_trans
+```
+
+Adicionalmente, se presenta un gráfico cuantil-cuantil (QQ-plot) que permite comparar la distribución normal con la distribución logarítmica del total de transacciones.
 
 ```{r}
-#DataExplorer::create_report(data)
+qqplot_normal <- data %>% 
+  filter(fecha >= "2020-05-01") %>% 
+  ggplot(aes(sample = log(gtics_transacciones+1))) +
+  geom_qq() +
+  geom_qq_line(colour = "red") +
+  ggtitle("QQ-Plot Normal") +
+  xlab("Cuantiles de distribución normal") +
+  ylab("Cuantiles de distribución de transacciones (log)")
+
+df <- data.frame(y = log(data$gtics_transacciones+1))
+params <- as.list(MASS::fitdistr(
+  df$y, "chi-squared", start = list(df = 10), 
+  method="Brent",lower=0.1,upper=100)$estimate
+  )
+
+df_param <- params[[1]] +1.5
+qqplot_chi <- data %>% 
+  filter(fecha >= "2020-05-01") %>% 
+  ggplot(aes(sample = log(gtics_transacciones+1))) +
+  geom_qq(distribution = qchisq, dparams = df_param) +
+  geom_qq_line(distribution = qchisq, dparams = df_param, colour = "red") +
+  ggtitle("QQ-Plot Chi Cuadrada") +
+  xlab("Cuantiles de distribución Chi-cuadrada") +
+  ylab("Cuantiles de distribución de transacciones (log)")
+
+qqplot_normal + qqplot_chi
+
+```
+
+En este gráfico se puede apreciar que la distribución logarítmica de las transacciones se ajusta mejor a través de una familia paramétrica $\chi^2$ de 6 grados de libertad. Esto ayuda a entender los métodos aplicables a la distribución de transacciones, pues no se deberán usar aquellos que son usados con la distribución normal.
+
+```{r, eval=FALSE}
 data %>% 
   filter(fecha >= "2020-05-01") %>% 
-  #select(-starts_with("fb")) %>%
   DataExplorer::plot_histogram(ncol = 2, title = "Univariate Histograms")
 ```
 
-De manera adicional, los gráficos QQ-plot permiten conocer la bondad de ajuste de una distribución normal estándar con cada una de las potenciales variables explicativas al comparar la distribución de ambas variables (Variable explicativa Vs Distribución normal).
+<!-- De manera adicional, los gráficos QQ-plot permiten conocer la bondad de ajuste de una distribución normal estándar con cada una de las potenciales variables explicativas al comparar la distribución de ambas variables (Variable explicativa Vs Distribución normal). -->
 
-A continuación se muestran los gráficos que permiten entender mejor la comparación de distribuciones:
+<!-- A continuación se muestran los gráficos que permiten entender mejor la comparación de distribuciones: -->
 
-```{r}
+```{r, eval=FALSE}
 data %>% 
   filter(fecha >= "2020-05-01") %>% 
-  #select(-starts_with("fb")) %>%
   DataExplorer::plot_qq(
     ncol = 2, 
     nrow = 2, 
     title = "QQ-plots"
     )
 ```
+
+
+```{r, out.width="800pt"}
+library(shiny)
+
+knitr::include_url(
+  "https://acturio.shinyapps.io/ddi_eda_uni/",
+  height = "600px")
+```
+
+
 
 
 ## Análisis de correlación
@@ -314,13 +421,13 @@ data %>%
 ```
 
 
-## Reducción de dimensión
+<!-- ## Reducción de dimensión -->
 
-Un caso de análisis particular que resulta de mucho interés, es el análisis de reducción de dimensión a partir de **Componentes Principales**, en donde es posible crear nuevas variables que sustituyan a las originales manteniendo un alto nivel de información con menos variables que el número original de variables.
+<!-- Un caso de análisis particular que resulta de mucho interés, es el análisis de reducción de dimensión a partir de **Componentes Principales**, en donde es posible crear nuevas variables que sustituyan a las originales manteniendo un alto nivel de información con menos variables que el número original de variables. -->
 
-En las siguientes gráficas se presenta el porcentaje de información retenida al conservar 1, 5, 10, etc componentes nuevas. Es posible apreciar en la gráfica que con 8 componentes se logra retener el 85% de información de las 32 variables originales.
+<!-- En las siguientes gráficas se presenta el porcentaje de información retenida al conservar 1, 5, 10, etc componentes nuevas. Es posible apreciar en la gráfica que con 8 componentes se logra retener el 85% de información de las 32 variables originales. -->
 
-```{r}
+```{r, eval=FALSE}
 data %>%
   filter(fecha >= "2020-05-01") %>% 
   select(-fecha, -ends_with("lead_generation"), -ends_with("messages"), -ends_with("shopping"),-ends_with("máximo")) %>%
@@ -340,7 +447,7 @@ Este análisis se realiza estudiando la estacionalidad por días de la semana, s
 
 ```{r}
 original_ts_plot <- data %>%
-  #filter(fecha >= "2020-05-01", fecha < '2022-06-01') %>% 
+  filter(fecha >= "2020-05-01") %>% 
   rename(transacciones = gtics_transacciones) %>% 
   ggplot(aes(x = fecha, y = transacciones)) +
   geom_line() +

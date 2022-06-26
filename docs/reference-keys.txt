@@ -10,7 +10,6 @@ análisis-de-disponibilidad
 análisis-univariado
 análisis-de-correlación
 análisis-multivariado-gráfico
-reducción-de-dimensión
 análisis-temporal
 estacionalidad-anual
 estacionalidad-semanal
@@ -19,7 +18,6 @@ descomposición-aditiva
 forecasting
 ingeniería-de-variables
 variables-temporales
-agregaciones-por-ventana
 partición
 ajuste-de-modelos
 selección-de-mejor-modelo
