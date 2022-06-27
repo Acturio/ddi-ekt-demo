@@ -187,7 +187,12 @@ Dada esta información disponible... Se comenzará a trabajar la información di
 
 ## Análisis univariado
 
-Con el objetivo de conocer la distribución univariada de la variable de interés y de cada una de las características asociadas a las transacciones, se crean gráficos de histogramas, los cuales se presentan a continuación:
+Con el objetivo de conocer las características y comportamiento de las actividades asociadas a las ventas de Elektra mediante la plataforma de *e-commerce*, se presentan en esa sección diversos análisis estadísticos y gráficos que facilitan el entendimiento de la información que ha sido registrada en los últimos años. La variable más importante a estudiar es la respuesta que se desea pronosticar, en este caso, se trata de las transacciones diarias.
+
+El siguiente gráfico se trata de un histograma. Este gráfico permite conocer la cantidad de transacciones que tienen lugar por rangos, es decir, se crean 30 rangos del mismo tamaño (equidistantes) y se calcula el número de transacciones que ocurren en cada intervalo. Mediante esta visualización es factible conocer el rango de transacciones diarias que se acumulan con más frecuencia y aquellas que ocurren rara vez ya sea porque se trata de muy bajas o muy altas transacciones.
+
+Adicionalmente, se hace uso de una transformación de estabilización de la variabilidad. Debido a que existe una gran diferencia entre los días con alto número de transacciones y el el resto de días en donde ocurren bajas transacciones, los intervalos creados por el gráfico no facilitan de la mejor manera el entendimiento de la información y es por esa razón que se realiza la transformación matemática conocida como *logaritmo natural*.
+
 
 ```{r} 
 library(patchwork)
@@ -213,10 +218,37 @@ hist_log_trans <- data %>%
 
 hist_trans / hist_log_trans
 ```
+```{r}
+stats_transacciones <- data %>% 
+  filter(fecha >= "2020-05-01") %>% 
+  summarise(
+    total = sum(gtics_transacciones),
+    `desviación estandar` = sd(gtics_transacciones),
+    media = mean(gtics_transacciones, na.rm = T),
+    `desviación media` = sd(gtics_transacciones, na.rm = T)/sqrt(n()),
+    min = min(gtics_transacciones, na.rm = T),
+    q10 = quantile(gtics_transacciones, probs = 0.10, na.rm = T),
+    q25 = quantile(gtics_transacciones, probs = 0.25, na.rm = T),
+    mediana = median(gtics_transacciones, na.rm = T),
+    q75 = quantile(gtics_transacciones, probs = 0.75, na.rm = T),
+    q90 = quantile(gtics_transacciones, probs = 0.90, na.rm = T),
+    max = max(gtics_transacciones, na.rm = T),
+    `rango intercuartil` = q75 - q25,
+    `coeficiente variación` = `desviación estandar`/media
+  ) %>% 
+  round(1)
 
-A través de los histrogramas se observa que existe una cola pesada del lado derecho, el cual corresponde al alto número de transacciones. Una transformación matemática que ayuda a comprimir los valores altos es la logarítmica, la cual tiene propiedades que auxilian a modelar y analizar estadísticamente la distribución de datos bajo estudio. El segundo gráfico muestra una distribución similar a la normal, sin embargo, sigue existiendo una cola larga del lado derecho que sesga ligeramente la media respecto a la mediana.
+stats_transacciones %>% 
+  DT::datatable(
+    rownames = F,
+    options=list(dom="t", scrollX = TRUE)
+    ) %>% 
+  DT::formatRound(columns = 1, interval = 3, mark = ",", digits = 0)
+```
 
-A través de los siguientes gráficos se analiza la distribución de las transacciones tanto en su escala original como en la escala logarítmica, mostrando la media, percentiles 10, 25, 50, 75, 90 y puntos que son considerados atípicos. 
+Al analizar los estadísticos y el gráfico anterior, observamos que en el periodo entre el 1° de mayo de 2020 y el 13 de junio de 2022 han ocurrido 92,758 transacciones. En promedio, cada día ocurren entre 115 y 125 transacciones. Esta media es ligeramente sesgada debido a los días en donde ocurren muchas transacciones. La mitad de días ocurren hasta 102 transacciones y la otra mitad ocurren más, sin embargo, hay días de mucha actividad. Por ejemplo, el día de mayor número de transacciones en este periodo corresponde al periodo de ventas en el "black-friday" del año 2020, en donde tienen lugar 648 transacciones. Eliminando el 10% de los días de más alta actividad y el 10% de más baja, ocurren entre 69 y 195 transacciones. `r stats_transacciones$q75 + 1.5*stats_transacciones$`rango intercuartil`
+
+Otra forma de analizar estos días e intervalos clave, es a través de los siguientes gráficos de *violín*, en los cuales se analiza la distribución de transacciones tanto en su escala original como en la escala logarítmica, mostrando la media, percentiles 10, 25, 50, 75, 90 y puntos que son considerados atípicos. 
 
 ```{r, out.height="400pt"} 
 data_summary <- function(x) {
@@ -254,12 +286,14 @@ violin_log_trans <- data %>%
 violin_trans + violin_log_trans
 ```
 
-El gráfico anterior permite conocer la distribución de densidad completa y muestra los percentiles clave mencionados anteriormente. El punto rojo corresponde a la media, mientras que los negros son considerados valores atípicos debido a que se encuentran a más de 1.5 veces en rango intercuartil a partir del perceltil 75. Estos puntos corresponden a las fechas coincidentes con el *buen fin* y el *black friday*. Por último, el inicio y fin de la línea roja representan los percentiles 10 y 90.
 
 
-Debido a que es áltamente deseable conocer la bondad de ajuste con una distribución normal, se presenta un gráfico cuantil-cuantil (QQ-plot) que permite comparar percentil a percentil la distribución normal con la distribución logarítmica del total de transacciones. Esta comparación se hace tanto para la distribución normal como para la $\chi^2$.
+El gráfico anterior permite conocer la distribución de transacciones de una manera más suave y no por rangos (como con los histogramas). Se muestra los percentiles clave mencionados anteriormente a través de la caja conocida como boxplot. El punto rojo corresponde a la media, mientras que los negros son considerados valores atípicos debido a que se encuentran a más de 1.5 veces en rango intercuartil a partir del perceltil 75. En las transacciones observadas en este periodo, todo aquél día en que ocurran más de 220 transacciones se cosidera un día atípico. Estos puntos corresponden a las fechas coincidentes con el *buen fin* y el *black friday*. Por último, el inicio y fin de la línea roja representan los percentiles 10 y 90.
 
-```{r}
+
+<!-- Debido a que es áltamente deseable conocer la bondad de ajuste con una distribución normal, se presenta un gráfico cuantil-cuantil (QQ-plot) que permite comparar percentil a percentil la distribución normal con la distribución logarítmica del total de transacciones. Esta comparación se hace tanto para la distribución normal como para la $\chi^2$. -->
+
+```{r, eval=FALSE}
 qqplot_normal <- data %>% 
   filter(fecha >= "2020-05-01") %>% 
   ggplot(aes(sample = log(gtics_transacciones+1))) +
@@ -288,7 +322,7 @@ qqplot_chi <- data %>%
 qqplot_normal + qqplot_chi
 ```
 
-En este gráfico se puede apreciar que la distribución logarítmica de las transacciones se ajusta mejor a través de una familia paramétrica $\chi^2$ de 6 grados de libertad (estimación por MV). Esto ayuda a entender los métodos aplicables a la distribución de transacciones, pues no se deberán usarse aquellos que asumen una distribución normal.
+<!-- En este gráfico se puede apreciar que la distribución logarítmica de las transacciones se ajusta mejor a través de una familia paramétrica $\chi^2$ de 6 grados de libertad (estimación por MV). Esto ayuda a entender los métodos aplicables a la distribución de transacciones, pues no se deberán usarse aquellos que asumen una distribución normal. -->
 
 ```{r, eval=FALSE}
 data %>% 
