@@ -214,7 +214,7 @@ hist_log_trans <- data %>%
 hist_trans / hist_log_trans
 ```
 
-A través de los histrogramas se observa que existe una cola pesada del lado derecho, el cual corresponde al alto número de transacciones que ocurre en la temporada del *buen fin* y *black friday*.
+A través de los histrogramas se observa que existe una cola pesada del lado derecho, el cual corresponde al alto número de transacciones. Una transformación matemática que ayuda a comprimir los valores altos es la logarítmica, la cual tiene propiedades que auxilian a modelar y analizar estadísticamente la distribución de datos bajo estudio. El segundo gráfico muestra una distribución similar a la normal, sin embargo, sigue existiendo una cola larga del lado derecho que sesga ligeramente la media respecto a la mediana.
 
 A través de los siguientes gráficos se analiza la distribución de las transacciones tanto en su escala original como en la escala logarítmica, mostrando la media, percentiles 10, 25, 50, 75, 90 y puntos que son considerados atípicos. 
 
@@ -254,7 +254,10 @@ violin_log_trans <- data %>%
 violin_trans + violin_log_trans
 ```
 
-Adicionalmente, se presenta un gráfico cuantil-cuantil (QQ-plot) que permite comparar la distribución normal con la distribución logarítmica del total de transacciones.
+El gráfico anterior permite conocer la distribución de densidad completa y muestra los percentiles clave mencionados anteriormente. El punto rojo corresponde a la media, mientras que los negros son considerados valores atípicos debido a que se encuentran a más de 1.5 veces en rango intercuartil a partir del perceltil 75. Estos puntos corresponden a las fechas coincidentes con el *buen fin* y el *black friday*. Por último, el inicio y fin de la línea roja representan los percentiles 10 y 90.
+
+
+Debido a que es áltamente deseable conocer la bondad de ajuste con una distribución normal, se presenta un gráfico cuantil-cuantil (QQ-plot) que permite comparar percentil a percentil la distribución normal con la distribución logarítmica del total de transacciones. Esta comparación se hace tanto para la distribución normal como para la $\chi^2$.
 
 ```{r}
 qqplot_normal <- data %>% 
@@ -283,10 +286,9 @@ qqplot_chi <- data %>%
   ylab("Cuantiles de distribución de transacciones (log)")
 
 qqplot_normal + qqplot_chi
-
 ```
 
-En este gráfico se puede apreciar que la distribución logarítmica de las transacciones se ajusta mejor a través de una familia paramétrica $\chi^2$ de 6 grados de libertad. Esto ayuda a entender los métodos aplicables a la distribución de transacciones, pues no se deberán usar aquellos que son usados con la distribución normal.
+En este gráfico se puede apreciar que la distribución logarítmica de las transacciones se ajusta mejor a través de una familia paramétrica $\chi^2$ de 6 grados de libertad (estimación por MV). Esto ayuda a entender los métodos aplicables a la distribución de transacciones, pues no se deberán usarse aquellos que asumen una distribución normal.
 
 ```{r, eval=FALSE}
 data %>% 
@@ -308,6 +310,7 @@ data %>%
     )
 ```
 
+Con el objetivo de que el lector de esta documentación pueda elegir la variable deseada y estudiar su comportamiento, se presenta una aplicación interactiva para explorar de manera univariada las columnas numéricas que son consideradas en el conjunto de datos.
 
 ```{r, out.width="800pt"}
 library(shiny)
@@ -317,14 +320,11 @@ knitr::include_url(
   height = "600px")
 ```
 
-
-
-
 ## Análisis de correlación
 
 Una vez analizada la distribución unitaria de cada una de las variables presentes, se desea conocer el grado de asociación entre variables, de forma que pueda saberse cuáles de ellas están relacionadas de manera positiva o negativa, así como la intensidad de esta posible relación.
 
-```{r}
+```{r, }
 M = data %>%
   filter(fecha >= "2020-05-01") %>% 
   select(-fecha, -ends_with("lead_generation"), -ends_with("messages")) %>%
@@ -410,7 +410,7 @@ Es de particular interés estudiar las variables que puedan conocerse de manera 
 
 Habiendo observado la correlación analítica de manera conjunta entre variable objetivo y el resto de variables, se procede a observar esta relación de manera gráfica.
 
-```{r}
+```{r, eval=FALSE}
 data %>%
   filter(fecha >= "2020-05-01") %>% 
   select(-fecha, -ends_with("lead_generation"), -ends_with("messages"), -ends_with("shopping"),-ends_with("máximo")) %>%
