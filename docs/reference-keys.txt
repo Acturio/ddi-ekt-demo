@@ -8,13 +8,13 @@ análisis-exploratorio
 nomenclatura
 análisis-de-disponibilidad
 análisis-univariado
-análisis-de-correlación
-análisis-multivariado-gráfico
 análisis-temporal
 estacionalidad-anual
 estacionalidad-semanal
 autocorrelación
 descomposición-aditiva
+análisis-de-correlación
+análisis-multivariado-gráfico
 forecasting
 ingeniería-de-variables
 variables-temporales

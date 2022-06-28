@@ -3,6 +3,7 @@ library(shiny)
 library(ggplot2)
 library(stringr)
 library(patchwork)
+library(DT)
 
 data <- readRDS("data.rds") %>%
   filter(fecha >= "2020-05-01")
@@ -34,14 +35,14 @@ shinyApp(
     shiny::radioButtons(
       inputId = "plottype",
       label = "Seleccione el tipo de gráfico",
-      choices = c("Histograma", "Violin", "qq-plot (normal)", "qq-plot (Chi-square)"),
+      choices = c("Histograma", "Violin"),
       selected = "Histograma",
       inline = T
       ),
 
+    checkboxInput(inputId = "log", "Escala logarítmica"),
     plotOutput("univariate_plot"),
-    checkboxInput(inputId = "log", "Escala logarítmica")
-
+    dataTableOutput("statistics")
   ),
 
   server <- function(input, output){
@@ -62,13 +63,6 @@ shinyApp(
         data_log[,input$variable] <- data_log[,input$variable] %>%
           pull() %>% +1 %>% log()
       }
-
-      df <- data.frame(y = data_log[,input$variable] %>% pull()) %>%
-          filter(!is.na(y))
-        params <- as.list(MASS::fitdistr(
-          df$y, "chi-squared", start = list(df = 10),
-          method="Brent",lower=0.1,upper=100)$estimate
-        )
 
       if(input$plottype == "Histograma"){
         dist_plot <- data_log %>%
@@ -106,40 +100,6 @@ shinyApp(
               str_replace(pattern = "^n$", "Número de campañas activas"),
             x = "")
       }
-      else if(input$plottype == "qq-plot (normal)"){
-
-        dist_plot <- data_log %>%
-          ggplot(aes_string(sample = input$variable)) +
-          geom_qq() +
-          geom_qq_line(colour = "red") +
-          ggtitle("QQ-Plot Normal") +
-          labs(
-            title = "QQ-Plot Normal",
-            subtitle =  str_c("Fuente: ", fuente),
-            y = input$variable %>%
-              str_remove_all(pattern = "(gads_)|(fb_)|(gtics_)") %>%
-              str_remove_all(pattern = "_.*") %>%
-              str_replace(pattern = "^n$", "número de campañas activas") %>%
-              str_c("Cuantiles de distribución de ", .),
-            x = "Cuantiles de distribución normal")
-      }
-       else if(input$plottype == "qq-plot (Chi-square)"){
-
-        dist_plot <- data_log %>%
-          ggplot(aes_string(sample = input$variable)) +
-          geom_qq(distribution = qchisq, dparams = params[[1]]) +
-          geom_qq_line(distribution = qchisq, dparams = params[[1]], colour = "red") +
-          ggtitle("QQ-Plot Chi-square") +
-          labs(
-            title = "QQ-Plot Chi-square",
-            subtitle =  str_c("Fuente: ", fuente),
-            y = input$variable %>%
-              str_remove_all(pattern = "(gads_)|(fb_)|(gtics_)") %>%
-              str_remove_all(pattern = "_.*") %>%
-              str_replace(pattern = "^n$", "número de campañas activas") %>%
-              str_c("Cuantiles de distribución de ", .),
-            x = "Cuantiles de distribución Chi-square")
-      }
 
       ts_plot <- data_log %>%
         ggplot(aes_string(x = "fecha", y = input$variable)) +
@@ -157,6 +117,33 @@ shinyApp(
             )
 
       ts_plot + dist_plot
+    })
+
+    output$statistics <- renderDataTable({
+      stats_transacciones <- data %>%
+        summarise(
+          total = sum(!!sym(input$variable)),
+          `desviación estandar` = sd(!!sym(input$variable)),
+          media = mean(!!sym(input$variable), na.rm = T),
+          `desviación media` = sd(!!sym(input$variable), na.rm = T)/sqrt(n()),
+          min = min(!!sym(input$variable), na.rm = T),
+          q10 = quantile(!!sym(input$variable), probs = 0.10, na.rm = T),
+          q25 = quantile(!!sym(input$variable), probs = 0.25, na.rm = T),
+          mediana = median(!!sym(input$variable), na.rm = T),
+          q75 = quantile(!!sym(input$variable), probs = 0.75, na.rm = T),
+          q90 = quantile(!!sym(input$variable), probs = 0.90, na.rm = T),
+          max = max(!!sym(input$variable), na.rm = T),
+          `rango intercuartil` = q75 - q25,
+          `coeficiente variación` = `desviación estandar`/media
+        ) %>%
+        round(1)
+
+      stats_transacciones %>%
+        DT::datatable(
+          rownames = F,
+          options=list(dom="t", scrollX = TRUE)
+          ) %>%
+        DT::formatRound(columns = 1:12, interval = 3, mark = ",", digits = 0)
     })
   },
 
