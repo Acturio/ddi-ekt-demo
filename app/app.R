@@ -17,12 +17,6 @@ data_summary <- function(x) {
 
 options(shiny.sanitize.errors = F)
 
-# data %>%
-#   names() %>%
-#   str_remove_all(pattern = "(gads_)|(fb_)|(gtics_)") %>%
-#   str_remove_all(pattern = "_.*") %>%
-#   str_replace(pattern = "^n$", "Número de campañas activas")
-
 shinyApp(
 
   ui <- fluidPage(
@@ -122,8 +116,8 @@ shinyApp(
     output$statistics <- renderDataTable({
       stats_transacciones <- data %>%
         summarise(
-          total = sum(!!sym(input$variable)),
-          `desviación estandar` = sd(!!sym(input$variable)),
+          total = sum(!!sym(input$variable), na.rm = T),
+          `desviación estandar` = sd(!!sym(input$variable), na.rm = T),
           media = mean(!!sym(input$variable), na.rm = T),
           `desviación media` = sd(!!sym(input$variable), na.rm = T)/sqrt(n()),
           min = min(!!sym(input$variable), na.rm = T),

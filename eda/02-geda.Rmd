@@ -189,7 +189,7 @@ Dada esta información disponible... Se comenzará a trabajar la información di
 
 Con el objetivo de conocer las características y comportamiento de las actividades asociadas a las ventas de Elektra mediante la plataforma de *e-commerce*, se presentan en esa sección diversos análisis estadísticos y gráficos que facilitan el entendimiento de la información que ha sido registrada en los últimos años. La variable más importante a estudiar es la respuesta que se desea pronosticar, en este caso, se trata de las transacciones diarias.
 
-El siguiente gráfico se trata de un histograma. Este gráfico permite conocer la cantidad de transacciones que tienen lugar por rangos, es decir, se crean 30 rangos del mismo tamaño (equidistantes) y se calcula el número de transacciones que ocurren en cada intervalo. Mediante esta visualización es factible conocer el rango de transacciones diarias que se acumulan con más frecuencia y aquellas que ocurren rara vez ya sea porque se trata de muy bajas o muy altas transacciones.
+El siguiente gráfico se trata de un histograma. Este gráfico permite conocer la cantidad de transacciones que tienen lugar por rangos, es decir, se crean 30 rangos del mismo tamaño (equidistantes) y se calcula el número de transacciones que ocurren en cada intervalo. Mediante esta visualización es factible conocer el rango de transacciones diarias que se acumulan con más frecuencia y aquellas que ocurren rara vez ya sea porque se trata de días con muy bajo o muy alto número de transacciones.
 
 Adicionalmente, se hace uso de una transformación de estabilización de la variabilidad. Debido a que existe una gran diferencia entre los días con alto número de transacciones y el el resto de días en donde ocurren bajas transacciones, los intervalos creados por el gráfico no facilitan de la mejor manera el entendimiento de la información y es por esa razón que se realiza la transformación matemática conocida como *logaritmo natural*.
 
@@ -346,7 +346,7 @@ data %>%
     )
 ```
 
-Con el objetivo de que el lector de esta documentación pueda elegir la variable deseada y estudiar su comportamiento, se presenta una aplicación interactiva para explorar de manera univariada las columnas numéricas que son consideradas en el conjunto de datos.
+Con el objetivo de que el lector de esta documentación pueda elegir la variable deseada y estudiar su comportamiento, se presenta una aplicación interactiva para explorar de manera univariada las columnas numéricas que se encuentran incluidas en el conjunto de datos.
 
 ```{r, out.width="800pt"}
 library(shiny)
@@ -722,6 +722,10 @@ ts_full_data %>%
     )
 ```
 
+La forma de interpretar el gráfico anterior es la siguiente: cuando los puntos están cercanos o encima de la línea recta, significa que existe una correlación perfecta entre las transacciones actuales y la del periodo anterior definido por el número de lags. El lag 1 se refiere al conteo del día anterior, mientras que el lag 7 se refiere al conteo de 7 días anteriores. Aquellos puntos que se encuentran por encima de la línea diagonal hacen referencia días en donde el número de transacciones fue superior a los del lag correspondiente. De igual modo, los puntos por debajo de la línea punteada refieren a días en donde las transacciones pasadas superan a las actuales. Puede apreciarse que el lag en donde más puntos sobreponen la linea punteada es el lag 1.
+
+**Es áltamente probable que esta dependencia temporal se encuentre mediada por las actividades de marketing, por lo que un análisis multivariado permitirá conocer mejor tal asociación.**
+
 En análisis posteriores, se incluirá el **análisis de adstock**, el cual permitirá conocer el efecto acumulado en las ventas a partir de las inversiones realizadas en días consecutivos, así como el decaimiento de este efecto cuando la inversión disminuye.
 
 ### Descomposición aditiva
@@ -805,7 +809,7 @@ trend_plot / season_adjust_plot
 components(log_dcmp) %>% autoplot()
 ```
 
-Es visible una notable mejora en los residuales de la descomposición de tendencia y estacionalidad, lo que confirma la decisión de modelar el logaritmo de las transacciones para realizar los pronósticos. Aunque el modelo se realizará a través de logaritmos, sí es posible posteriormente observar los pronósticos en su escala original.
+Es visible una notable mejora en los residuales de la descomposición de tendencia y estacionalidad, lo que confirma la decisión de modelar el logaritmo de las transacciones para realizar los pronósticos. Aunque el modelo se realizará a través de logaritmos, posteriormente se realiza la corrección que permitirá observar los pronósticos en su escala original.
 
 
 
@@ -891,84 +895,43 @@ En primer lugar, se proponen como variables explicativas a aquellas que tengan u
 
 Es de particular interés estudiar las variables que puedan conocerse de manera anticipada al día de la predicción, es decir, variables como **costo invertido** son en primer instancia de mayor valor debido a que esas cantidades sí pueden planearse de manera anticipada, mientras que variables como **total de productos vendidos** sí presentan una alta correlación, sin embargo, no puede conocerse de manera precisa el valor de esta medición con anticipación.
 
-## Análisis multivariado gráfico
+## Análisis Multivariado
 
 Habiendo observado la correlación analítica de manera conjunta entre variable objetivo y el resto de variables, es viable proceder a observar esta relación de manera gráfica. En la medida en que se explora y entiende la relación entre dos variables, será posible agregar más características al análisis para conocer el efecto conjunto.
 
-Se presenta a continuación un par de ejemplos para posteriormente habilitar al usuario a realizar las características que de forma conjunta que sean de su interés.
-
-```{r}
-scatter_ploat_ingresos <- ts_full_data %>% 
-  as_tibble() %>% 
-  ggplot(aes(
-    x = log(gtics_ingresos), 
-    y = log(gtics_transacciones),
-    colour = gtics_sesiones)) +
-  geom_point() +
-  labs(title = "Comparación de transacciones e ingresos") +
-  coord_flip()
-```
-
+Una forma de estudiar la relación entre dos o más variables es mediante gráficos multivariados que muestren la asociación entre las características. En la siguiente gráfica se muestra la relación entre las transacciones y la inversión realizada en facebook para conseguir clicks en los links. Los siguientes gráficos de intervalos permiten conocer el efecto en las transacciones por cada rango de monto de inversión.
 
 ```{r}
 m1 = 3
 intervalos_2d <- ts_full_data %>% 
   as_tibble() %>% 
   mutate(
-    x = cut_interval(gtics_transacciones, n = m1, dig.lab = 1, labels = F), 
-    ingresos = gtics_ingresos) %>% 
+    x = cut(
+      fb_costo_link_clicks, 
+      breaks = c(quantile(ts_full_data$fb_costo_link_clicks, probs = seq(0, 1, by = 1/m1))),
+      dig.lab = 4), 
+    transacciones = gtics_transacciones) %>% 
+  filter(fecha > '2020-06-01') %>% 
   group_by(x) %>% 
   summarise(
     n = n(),
-    ingresos_mean = mean(ingresos, na.rm = T),
-    ingresos_se = sd(ingresos, na.rm = T)/sqrt(n()),
-    ingresos_sd = sd(ingresos, na.rm = T),
+    transacciones_mean = mean(transacciones, na.rm = T),
+    transacciones_se = sd(transacciones, na.rm = T)/sqrt(n()),
+    transacciones_sd = sd(transacciones, na.rm = T),
     .groups = "drop"
   ) %>% 
+  filter(!is.na(x)) %>%
+  mutate(x = as.character(x)) %>% 
   mutate(
-    ymin = ingresos_mean - 1.96 * ingresos_se, 
-    ymax = ingresos_mean + 1.96 * ingresos_se,
-    label1 = paste0(round((1/m1)*(x-1)*100, 1), ""), 
-    label2 = paste0(round(1/m1*x*100, 1), " (%)")
-  ) %>% 
-  unite(x, label1, label2, sep = " - ") %>% 
-  ggplot(aes(x = x, ingresos_mean, colour = x)) +
-  geom_point() +
-  geom_errorbar(
-    aes(ymin = ymin, ymax = ymax ), width = 0.1
-  ) +
-  scale_y_continuous(labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  labs(
-    title = "Ingresos a través de transacciones",
-    x = "Transacciones",
-    y = "Ingresos"
-  ) +
-  theme(legend.position = "none")
-
-
-
-intervalos_2d_inv <- ts_full_data %>% 
+    ymin = transacciones_mean - 1.96 * transacciones_se, 
+    ymax = transacciones_mean + 1.96 * transacciones_se,
+    x = str_replace_all(x, c(","="-", "\\("="", "\\)"="", "\\]"="", "\\["="") )
+  ) %>%
+  separate(x, into = c("x1", "x2"), sep = "-") %>% 
+  map_at(vars("x1", "x2"), ~format(round(as.numeric(.x)), big.mark = ",")) %>% 
   as_tibble() %>% 
-  mutate(
-    x = cut_interval(gtics_sesiones, n = m1, dig.lab = 1, labels = F), 
-    ingresos = gtics_ingresos) %>% 
-  group_by(x) %>% 
-  summarise(
-    n = n(),
-    ingresos_mean = mean(ingresos, na.rm = T),
-    ingresos_se = sd(ingresos, na.rm = T)/sqrt(n()),
-    ingresos_sd = sd(ingresos, na.rm = T),
-    .groups = "drop"
-  ) %>% 
-  mutate(
-    ymin = ingresos_mean - 1.96 * ingresos_se, 
-    ymax = ingresos_mean + 1.96 * ingresos_se,
-    label1 = paste0(round((1/m1)*(x-1)*100, 1), ""), 
-    label2 = paste0(round(1/m1*x*100, 1), " (%)")
-  ) %>% 
-  unite(x, label1, label2, sep = " - ") %>% 
-  ggplot(aes(x = x, ingresos_mean, colour = x)) +
+  unite(x, x1, x2, sep = " - ") %>% 
+  ggplot(aes(x = x, transacciones_mean, colour = x)) +
   geom_point() +
   geom_errorbar(
     aes(ymin = ymin, ymax = ymax ), width = 0.1
@@ -976,17 +939,140 @@ intervalos_2d_inv <- ts_full_data %>%
   scale_y_continuous(labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   labs(
-    title = "Ingresos a través de sesiones",
-    x = "Sesiones",
-    y = "Ingresos"
-  ) +
+    title = "Transacciones a través de inversiones",
+    subtitle = "Fuente: Facebook",
+    x = "Inversión en facebook (clicks link)", y = "Transacciones") +
   theme(legend.position = "none")
 
-scatter_ploat_ingresos + intervalos_2d
+intervalos_2d
 ```
 
+Cada rango está creado por los percentiles 0-33%, 33-66% y 66-100%. En los primeros dos grupos no existe una diferencia significativa en las transacciones, sin embargo, para el tercer grupo la diferencia es muy grande. Para entender mejor la relación que existe entre la inversión en facebook y las transacciones es posible involucrar más factores explicativos. El siguiente gráfico incorpora un panel diferenciador entre los días comerciales especiales y los días tradicionales.
 
 ```{r}
+    
+m1 = 3
+intervalos_3d <- ts_full_data %>% 
+  as_tibble() %>% 
+  mutate(
+    festivo = case_when(
+      (month(fecha) == 5) & (between(day(fecha), 1, 20)) ~ "Sí",
+      between(fecha, as_date("2020-11-09"), as_date('2020-11-20')) ~ "Sí",
+      between(fecha, as_date("2021-11-10"), as_date('2021-11-16')) ~ "Sí",
+      between(fecha, as_date("2020-11-25"), as_date('2020-11-30')) ~ "Sí",
+      between(fecha, as_date("2021-11-25"), as_date('2021-11-30')) ~ "Sí",
+      between(fecha, as_date("2020-07-12"), as_date('2020-07-25')) ~ "Sí",
+      between(fecha, as_date("2021-07-12"), as_date('2021-07-25')) ~ "Sí",
+      TRUE ~ "No"),
+    transacciones = cut_interval(gtics_transacciones, n = m1, dig.lab = 1, labels = F), 
+    x =  cut(
+      fb_costo_link_clicks, 
+      breaks = c(quantile(ts_full_data$fb_costo_link_clicks, probs = seq(0, 1, by = 1/m1))),
+      dig.lab = 4)) %>% 
+  filter(fecha > '2020-06-01') %>% 
+  group_by(festivo, x) %>% 
+  summarise(
+    n = n(),
+    transacciones_mean = mean(gtics_transacciones, na.rm = T),
+    transacciones_se = sd(gtics_transacciones, na.rm = T)/sqrt(n()),
+    transacciones_sd = sd(gtics_transacciones, na.rm = T),
+    .groups = "drop"
+  ) %>% 
+  filter(!is.na(x)) %>%
+    mutate(x = as.character(x)) %>% 
+  mutate(
+    ymin = transacciones_mean - 1.64 * transacciones_se, 
+    ymax = transacciones_mean + 1.64 * transacciones_se,
+    x = str_replace_all(x, c(","="-", "\\("="", "\\)"="", "\\]"="", "\\["="") )
+  ) %>%
+  separate(x, into = c("x1", "x2"), sep = "-") %>% 
+  map_at(vars("x1", "x2"), ~format(round(as.numeric(.x)), big.mark = ",")) %>% 
+  as_tibble() %>% 
+  unite(x, x1, x2, sep = " - ") %>% 
+  ggplot(aes(x = x, transacciones_mean, colour = x)) +
+  geom_point() +
+  geom_errorbar(
+    aes(ymin = ymin, ymax = ymax ), width = 0.1
+  ) +
+  scale_y_continuous(labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
+  facet_wrap(~ festivo, ncol = 2) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(
+    title = "Relación entre transacciones e inversión",
+    subtitle = "¿Es una fecha especial?",
+    x = "Inversión en facebook (clicks link)",
+    y = "Transacciones",
+  ) +
+  theme(legend.position = "none")
+
+intervalos_3d
+```
+
+Se logra apreciar que a mayor inversión, mayor es el número de transacciones. Esto ocurre independientemente de si existe una venta especial o no, sin embargo, se logra una fuerte interacción entre la inversión realizada y la venta especial para lograr un mayor número de transacciones.
+
+El siguiente gráfico multivariado presenta la comparación anual de la relación existente entre la inversión y las transacciones. El diferenciador del tipo de día comercial se representa mediante el color de los puntos y la tendencia en la relación se muestra a través de la linea recta.
+
+```{r}
+library(lubridate)
+
+scatter_plot_ingresos <- ts_full_data %>% 
+  mutate(
+    Festivo = case_when(
+      (month(fecha) == 5) & (between(day(fecha), 1, 20)) ~ "Sí",
+      between(fecha, as_date("2020-11-09"), as_date('2020-11-20')) ~ "Sí",
+      between(fecha, as_date("2021-11-10"), as_date('2021-11-16')) ~ "Sí",
+      between(fecha, as_date("2020-11-25"), as_date('2020-11-30')) ~ "Sí",
+      between(fecha, as_date("2021-11-25"), as_date('2021-11-30')) ~ "Sí",
+      between(fecha, as_date("2020-07-12"), as_date('2020-07-25')) ~ "Sí",
+      between(fecha, as_date("2021-07-12"), as_date('2021-07-25')) ~ "Sí",
+      TRUE ~ "No")) %>% 
+  as_tibble() %>% 
+  filter(log(fb_costo_link_clicks) > 4, fecha > '2020-06-01') %>% 
+  ggplot(aes(
+    x = log(fb_costo_link_clicks), 
+    y = log(gtics_transacciones),
+    colour = Festivo)
+    ) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm") +
+  facet_wrap(~ year(fecha)) +
+  labs(
+    title = "Comparación de transacciones e inversión",
+    subtitle = "Escala logarítmica",
+    x = "Inversión en facebook (clicks link)",
+    y = "Transacciones",
+    ) +
+  theme(legend.position="bottom")
+
+scatter_plot_ingresos
+```
+
+En el gráfico anterior se muestra la relación anual entre la inversión realizada en facebook en campañas con propósito de realizar *click en links* y el número de transacciones. Esta relación se encuentra diferenciada por días festivos, es decir, los puntos se colorean distinto dependiendo de si existe un día festivo o venta especial como *día de las madres*, *buen fin* o *black friday*. Se aprecia que en general los días festivos tienen un mayor número de transacciones. Hay que considerar que en el caso del año 2022 aún no se cuenta con todas las observaciones. Al final del mes de noviembre es que habrá concluído el periodo de gran número de ventas.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r, eval=FALSE}
 m1 = 3
 m2 = 3
 intervalos_3d <- ts_full_data %>% 
@@ -1029,70 +1115,72 @@ intervalos_3d <- ts_full_data %>%
   ) +
   theme(legend.position = "none")
 
-intervalos_2d_inv + intervalos_3d
+#intervalos_2d_inv + intervalos_3d
 ```
 
 
+```{r}
 
-
-
-
-
-
-
-
-
-```{r, eval=FALSE}
-ts_full_data %>%
-  as_tibble() %>% 
-  select(-fecha, -ends_with("lead_generation"), -ends_with("messages"), 
-         -ends_with("shopping"),-ends_with("máximo")) %>%
-  mutate(Transacciones = gtics_transacciones) %>% 
-  DataExplorer::plot_scatterplot(
-    by = "Transacciones"
-    )
+# ts_full_data %>% 
+#   select(gtics_transacciones, contains("_n_"), -gtics_n_productos, -gtics_n_fuente_medio, contains("costo")
+# ) %>% 
+#   as_tibble() %>% 
+#   rowwise() %>% 
+#   mutate(
+#     n_campaings = sum(across(contains("_n_")), na.rm = T),
+#     costo = sum(across(contains("costo")), na.rm = T)
+#     ) %>% 
+#   ungroup() %>% 
+#   select(fecha, n_campaings, gtics_transacciones, costo) %>% 
+#   mutate(
+#     festivo = case_when(
+#       (month(fecha) == 5) & (between(day(fecha), 1, 20)) ~ 1,
+#       between(fecha, as_date("2020-11-09"), as_date('2020-11-20')) ~ 1,
+#       between(fecha, as_date("2021-11-10"), as_date('2021-11-16')) ~ 1,
+#       between(fecha, as_date("2020-11-25"), as_date('2020-11-30')) ~ 1,
+#       between(fecha, as_date("2021-11-25"), as_date('2021-11-30')) ~ 1,
+#       TRUE ~ 0
+#     )
+#   ) %>% 
+#   select_if(is.numeric) %>% 
+#   cor(use = "pairwise.complete.obs")
 ```
 
 
+```{r}
+# intervalos_2d_inv <- ts_full_data %>% 
+#   as_tibble() %>% 
+#   mutate(
+#     x = cut_interval(gads_costo_buscar, n = m1, dig.lab = 1, labels = F), 
+#     transacciones = gtics_transacciones) %>% 
+#   group_by(x) %>% 
+#   summarise(
+#     n = n(),
+#     transacciones_mean = mean(transacciones, na.rm = T),
+#     transacciones_se = sd(transacciones, na.rm = T)/sqrt(n()),
+#     transacciones_sd = sd(transacciones, na.rm = T),
+#     .groups = "drop"
+#   ) %>%
+#   filter(!is.na(x)) %>% 
+#   mutate(
+#     ymin = transacciones_mean - 1.96 * transacciones_se, 
+#     ymax = transacciones_mean + 1.96 * transacciones_se,
+#     label1 = paste0(round((1/m1)*(x-1)*100, 1), ""), 
+#     label2 = paste0(round(1/m1*x*100, 1), " (%)")
+#   ) %>% 
+#   unite(x, label1, label2, sep = " - ") %>% 
+#   ggplot(aes(x = x, transacciones_mean, colour = x)) +
+#   geom_point() +
+#   geom_errorbar(
+#     aes(ymin = ymin, ymax = ymax ), width = 0.1
+#   ) +
+#   scale_y_continuous(labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+#   labs(
+#     title = "Transacciones a través de sesiones",
+#     x = "Inversión",
+#     y = "Transacciones"
+#   ) +
+#   theme(legend.position = "none")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<!-- ## Reducción de dimensión -->
-
-<!-- Un caso de análisis particular que resulta de mucho interés, es el análisis de reducción de dimensión a partir de **Componentes Principales**, en donde es posible crear nuevas variables que sustituyan a las originales manteniendo un alto nivel de información con menos variables que el número original de variables. -->
-
-<!-- En las siguientes gráficas se presenta el porcentaje de información retenida al conservar 1, 5, 10, etc componentes nuevas. Es posible apreciar en la gráfica que con 8 componentes se logra retener el 85% de información de las 32 variables originales. -->
-
-```{r, eval=FALSE}
-ts_full_data %>%
-  as_tibble() %>% 
-  select(-fecha, -ends_with("lead_generation"), -ends_with("messages"), 
-         -ends_with("shopping"),-ends_with("máximo")) %>%
-  na.omit() %>% 
-  DataExplorer::plot_prcomp(
-    variance_cap = 0.9,
-    ncol = 2,
-    nrow = 1
-  )
 ```
-

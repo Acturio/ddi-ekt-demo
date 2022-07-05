@@ -14,7 +14,7 @@ estacionalidad-semanal
 autocorrelación
 descomposición-aditiva
 análisis-de-correlación
-análisis-multivariado-gráfico
+análisis-multivariado
 forecasting
 ingeniería-de-variables
 variables-temporales
