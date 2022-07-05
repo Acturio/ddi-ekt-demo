@@ -23,7 +23,7 @@ options(shiny.sanitize.errors = F)
 
 ui <- fluidPage(
 
-  titlePanel("Multivariate Exploratory Data Analysis"),
+  #titlePanel("Multivariate Exploratory Data Analysis"),
 
   sidebarLayout(
       sidebarPanel(
@@ -44,18 +44,23 @@ ui <- fluidPage(
           inputId = "log2",
           label = "Escala logarítmica"),
         shiny::tags$hr(),
-        checkboxInput(
-          inputId = "split_date",
-          label = "Diferenciar días especiales"),
         numericInput(
           inputId = "n_interval",
           label = "Número de intervalos",
-          value = 3, min = 2, max = 10, step = 1)
+          value = 3, min = 2, max = 10, step = 1),
+        width = 2
       ),
 
       mainPanel(
+        checkboxInput(
+          inputId = "split_date",
+          label = "Diferenciar días comerciales especiales"),
         plotOutput("bivariate_plot"),
-        plotOutput("bivariate_plot_2")
+        checkboxInput(
+          inputId = "split_year",
+          label = "Diferenciar por año"),
+        plotOutput("trivariate_plot"),
+        width = 10
       )
   )
 )
@@ -133,11 +138,65 @@ server <- function(input, output) {
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
       labs(
         #title = "Relación entre transacciones e inversión",
-        #subtitle = "¿Es una fecha especial?",
+        subtitle = if_else(input$split_date, "¿Es una fecha comercial especial?", ""),
         x = input$covariable,
         y = input$response,
       ) +
       theme(legend.position = "none")
+
+  })
+
+  output$trivariate_plot <- renderPlot({
+
+    if(str_sub(input$covariable, 1, 5) == "gtics"){
+        fuente <- "Google Analytics"
+      }
+    else if(str_sub(input$covariable, 1, 4) == "gads"){
+        fuente <- "Google Ads"
+      }
+    else({
+        fuente <- "Facebook Ads"
+    })
+
+    data_log <- data %>%
+      filter(
+        !is.na(!!sym(input$response)),
+        !is.na(!!sym(input$covariable))
+      )
+    if(input$log1){
+      data_log[,input$response] <- data_log[,input$response] %>%
+        pull() %>% +1 %>% log()
+      data_log %<>% filter(!!sym(input$response) > 0)
+    }
+    if(input$log2){
+      data_log[,input$covariable] <- data_log[,input$covariable] %>%
+        pull() %>% +1 %>% log()
+      data_log %<>% filter(!!sym(input$covariable) > 0)
+    }
+
+    p <- data_log %>%
+      as_tibble() %>%
+      ggplot(aes_string(
+        x = input$covariable,
+        y = input$response,
+        label = "fecha",
+        colour = "Festivo")
+      ) +
+      geom_point(alpha = 0.6) +
+      geom_smooth(method = "lm")
+
+    if(input$split_year){
+      p <- p + facet_wrap(~ year(fecha), scales = "free_x")
+    }
+
+    p +
+      labs(
+        #title = "Comparación de transacciones e inversión",
+        #subtitle = paste("Fuente:", fuente),
+        x = input$covariable,
+        y = input$response,
+        ) +
+      theme(legend.position="bottom")
 
   })
 
