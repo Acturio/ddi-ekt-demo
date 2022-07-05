@@ -949,6 +949,36 @@ intervalos_2d
 
 Cada rango está creado por los percentiles 0-33%, 33-66% y 66-100%. En los primeros dos grupos no existe una diferencia significativa en las transacciones, sin embargo, para el tercer grupo la diferencia es muy grande. Para entender mejor la relación que existe entre la inversión en facebook y las transacciones es posible involucrar más factores explicativos. El siguiente gráfico incorpora un panel diferenciador entre los días comerciales especiales y los días tradicionales.
 
+```{r, eval = F}
+y = "gtics_transacciones"
+x = "gads_costo_buscar"
+n = "4"
+
+data_log <- ts_full_data
+
+data_log[,x] <- data_log[,x] %>% pull() %>% +1 %>% log()
+
+data_log %>% 
+  as_tibble() %>% 
+  mutate(
+    transacciones = cut_interval(!!sym(y), n = m1, dig.lab = 1, labels = F), 
+    x =  cut(
+      !!sym(x) %>% log() + 1, 
+      breaks = c(quantile(data_log %>% pull(!!sym(x)) %>% log() + 1, 
+                          probs = seq(0, 1, by = 1/as.numeric(n)))),
+      dig.lab = 4)) %>% 
+  filter(fecha > '2020-06-01') %>% 
+  group_by(x) %>% 
+  summarise(
+    n = n(),
+    transacciones_mean = mean(gtics_transacciones, na.rm = T),
+    transacciones_se = sd(gtics_transacciones, na.rm = T)/sqrt(n()),
+    transacciones_sd = sd(gtics_transacciones, na.rm = T),
+    .groups = "drop"
+  )
+```
+
+
 ```{r}
     
 m1 = 3
@@ -1018,12 +1048,12 @@ library(lubridate)
 scatter_plot_ingresos <- ts_full_data %>% 
   mutate(
     Festivo = case_when(
-      (month(fecha) == 5) & (between(day(fecha), 1, 20)) ~ "Sí",
-      between(fecha, as_date("2020-11-09"), as_date('2020-11-20')) ~ "Sí",
-      between(fecha, as_date("2021-11-10"), as_date('2021-11-16')) ~ "Sí",
+      (month(fecha) == 5) & (between(day(fecha), 1, 16)) ~ "Sí",
+      between(fecha, as_date("2020-11-16"), as_date('2020-11-20')) ~ "Sí",
       between(fecha, as_date("2020-11-25"), as_date('2020-11-30')) ~ "Sí",
-      between(fecha, as_date("2021-11-25"), as_date('2021-11-30')) ~ "Sí",
-      between(fecha, as_date("2020-07-12"), as_date('2020-07-25')) ~ "Sí",
+      between(fecha, as_date("2020-07-06"), as_date('2020-07-27')) ~ "Sí",
+      between(fecha, as_date("2021-11-10"), as_date('2021-11-16')) ~ "Sí",
+      between(fecha, as_date("2021-11-24"), as_date('2021-11-30')) ~ "Sí",
       between(fecha, as_date("2021-07-12"), as_date('2021-07-25')) ~ "Sí",
       TRUE ~ "No")) %>% 
   as_tibble() %>% 
@@ -1031,6 +1061,7 @@ scatter_plot_ingresos <- ts_full_data %>%
   ggplot(aes(
     x = log(fb_costo_link_clicks), 
     y = log(gtics_transacciones),
+    label = fecha,
     colour = Festivo)
     ) +
   geom_point(alpha = 0.6) +
@@ -1044,7 +1075,7 @@ scatter_plot_ingresos <- ts_full_data %>%
     ) +
   theme(legend.position="bottom")
 
-scatter_plot_ingresos
+ggplotly(scatter_plot_ingresos)
 ```
 
 En el gráfico anterior se muestra la relación anual entre la inversión realizada en facebook en campañas con propósito de realizar *click en links* y el número de transacciones. Esta relación se encuentra diferenciada por días festivos, es decir, los puntos se colorean distinto dependiendo de si existe un día festivo o venta especial como *día de las madres*, *buen fin* o *black friday*. Se aprecia que en general los días festivos tienen un mayor número de transacciones. Hay que considerar que en el caso del año 2022 aún no se cuenta con todas las observaciones. Al final del mes de noviembre es que habrá concluído el periodo de gran número de ventas.
