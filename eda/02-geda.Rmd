@@ -185,13 +185,17 @@ ggplot(aes(x = fecha, y = gtics_transacciones)) +
 Dada esta información disponible... Se comenzará a trabajar la información disponible en el periodo del 1° de mayo de 2020 al 1° de junio de 2022, sin embargo, es áltamente deseable contar con la información completa para extraer el mayor valor de la información recolactada.
 :::
 
+
+
+
+
 ## Análisis Univariado
 
-Con el objetivo de conocer las características y comportamiento de las actividades asociadas a las ventas de Elektra mediante la plataforma de *e-commerce*, se presentan en esa sección diversos análisis estadísticos y gráficos que facilitan el entendimiento de la información que ha sido registrada en los últimos años. La variable más importante a estudiar es la respuesta que se desea pronosticar, en este caso, se trata de las transacciones diarias.
+Con el objetivo de conocer las características y comportamiento de las actividades asociadas a las ventas de Elektra mediante la plataforma de *e-commerce*, se presentan en esa sección diversos análisis estadísticos y gráficos que facilitan el entendimiento de la información que ha sido registrada en los últimos años. La variable más importante a estudiar es la respuesta que se desea pronosticar, la cual corresponde a las transacciones diarias. En un siguiente apartado se realiza el análisis de la relación entre múltiples variables.
 
 El siguiente gráfico se trata de un histograma. Este gráfico permite conocer la cantidad de transacciones que tienen lugar por rangos, es decir, se crean 30 rangos del mismo tamaño (equidistantes) y se calcula el número de transacciones que ocurren en cada intervalo. Mediante esta visualización es factible conocer el rango de transacciones diarias que se acumulan con más frecuencia y aquellas que ocurren rara vez ya sea porque se trata de días con muy bajo o muy alto número de transacciones.
 
-Adicionalmente, se hace uso de una transformación de estabilización de la variabilidad. Debido a que existe una gran diferencia entre los días con alto número de transacciones y el el resto de días en donde ocurren bajas transacciones, los intervalos creados por el gráfico no facilitan de la mejor manera el entendimiento de la información y es por esa razón que se realiza la transformación matemática conocida como *logaritmo natural*.
+Adicionalmente, se hace uso de una transformación de estabilización de la variabilidad. Debido a que existe una gran diferencia entre los días con alto número de transacciones y el resto de días en donde ocurren bajas transacciones, los intervalos creados por el gráfico no facilitan de la mejor manera el entendimiento de la información y es por esa razón que se realiza la transformación matemática conocida como *logaritmo natural*.
 
 
 ```{r} 
@@ -248,6 +252,8 @@ stats_transacciones %>%
 
 </br>
 
+**Interpretación**
+
 Al analizar los estadísticos y el gráfico anterior, observamos que el periodo entre el 1° de mayo de 2020 y el 13 de junio de 2022 han ocurrido 92,758 transacciones. En promedio, cada día ocurren entre 115 y 125 transacciones. Esta media es ligeramente sesgada debido a los días en donde ocurren muchas transacciones. La mitad de días ocurren hasta 102 transacciones y la otra mitad ocurren más, sin embargo, hay días de mucha actividad. Por ejemplo, el día de mayor número de transacciones en este periodo corresponde al periodo de ventas en el "black-friday" del año 2020, en donde tienen lugar 648 transacciones. Eliminando el 10% de los días de más alta actividad y el 10% de más baja, ocurren entre 69 y 195 transacciones. 
 
 Otra forma de analizar estos días e intervalos clave, es a través de los siguientes gráficos de *violín*, en los cuales se analiza la distribución de transacciones tanto en su escala original como en la escala logarítmica, mostrando la media, percentiles 10, 25, 50, 75, 90 y puntos que son considerados atípicos. 
@@ -289,6 +295,7 @@ violin_trans + violin_log_trans
 ```
 
 
+**Interpretación**
 
 El gráfico anterior permite conocer la distribución de transacciones de una manera más suave y no por rangos (como con los histogramas). Se muestra los percentiles clave mencionados anteriormente a través de la caja conocida como boxplot. El punto rojo corresponde a la media, mientras que los negros son considerados valores atípicos debido a que se encuentran a más de 1.5 veces en rango intercuartil a partir del perceltil 75. En las transacciones observadas en este periodo, todo aquél día en que ocurran más de 220 transacciones se cosidera un día atípico. Estos puntos corresponden a las fechas coincidentes con el *buen fin* y el *black friday*. Por último, el inicio y fin de la línea roja representan los percentiles 10 y 90.
 
@@ -356,7 +363,7 @@ knitr::include_url(
   height = "700px")
 ```
 
-
+Para mayor comodidad de uso de la app, dar click [aquí](https://acturio.shinyapps.io/ddi_eda_uni/)
 
 
 
@@ -467,7 +474,7 @@ ts_full_data %>%
 
 Se puede apreciar en la tabla anterior que al considerar intervalos de confianza al 90% no existe una diferencia significativa en la media de transacciones anuales. El cambio porcentual entre un año y otro no es del todo comparable debido a que no son años completos. Mientras que en 2020 se analiza información posterior al 1° de mayo, en 2022 se cuenta con información hasta el 1° de mayo.
 
-A fin de comparar el desempeño de las transacciones de ecommerce de una manera más justa, se realiza el análisis de la diferencia de transacciones realizadas tomando en cuenta el procentaje de avance del año. Esto, debido a que en 2022 no se ha llegado a la etapa del año donde se realizan más transacciones:
+A fin de comparar el desempeño de las transacciones de *e-commerce* de una manera más justa, se realiza el análisis de la diferencia de transacciones realizadas tomando en cuenta el procentaje de avance del año. Esto, debido a que en 2022 no se ha llegado a la etapa del año donde se realizan más transacciones:
 
 ```{r}
 ts_full_data %>%
@@ -722,7 +729,9 @@ ts_full_data %>%
     )
 ```
 
-La forma de interpretar el gráfico anterior es la siguiente: cuando los puntos están cercanos o encima de la línea recta, significa que existe una correlación perfecta entre las transacciones actuales y la del periodo anterior definido por el número de lags. El lag 1 se refiere al conteo del día anterior, mientras que el lag 7 se refiere al conteo de 7 días anteriores. Aquellos puntos que se encuentran por encima de la línea diagonal hacen referencia días en donde el número de transacciones fue superior a los del lag correspondiente. De igual modo, los puntos por debajo de la línea punteada refieren a días en donde las transacciones pasadas superan a las actuales. Puede apreciarse que el lag en donde más puntos sobreponen la linea punteada es el lag 1.
+**Interpretación**
+
+Cuando los puntos están cercanos o encima de la línea recta, significa que existe una correlación perfecta entre las transacciones actuales y la del periodo anterior definido por el número de lags. El lag 1 se refiere al conteo del día anterior, mientras que el lag 7 se refiere al conteo de 7 días anteriores. Aquellos puntos que se encuentran por encima de la línea diagonal hacen referencia días en donde el número de transacciones fue superior a los del lag correspondiente. De igual modo, los puntos por debajo de la línea punteada refieren a días en donde las transacciones pasadas superan a las actuales. Puede apreciarse que el lag en donde más puntos sobreponen la linea punteada es el lag 1.
 
 **Es áltamente probable que esta dependencia temporal se encuentre mediada por las actividades de marketing, por lo que un análisis multivariado permitirá conocer mejor tal asociación.**
 
@@ -769,7 +778,7 @@ components(dcmp) %>% autoplot()
 
 Al observar el residuo, se aprecia que no existe un comportamiento estacionario, por lo que posiblemente existen patrones temporales no detectados en esta descomposición. 
 
-Como primera mejora de modelado, se replica la descomposición de tendencia y estacionalidad usando la transformación logarítmica que se mosotró en secciones anteriores. 
+Como primera mejora de modelado, se replica la descomposición de tendencia y estacionalidad usando la transformación logarítmica que se mostró en secciones anteriores. 
 
 ```{r}
 log_dcmp <- ts_full_data %>%
@@ -939,12 +948,22 @@ intervalos_2d <- ts_full_data %>%
   scale_y_continuous(labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   labs(
-    title = "Transacciones a través de inversiones",
+    title = "Rango de transacciones",
     subtitle = "Fuente: Facebook",
     x = "Inversión en facebook (clicks link)", y = "Transacciones") +
   theme(legend.position = "none")
 
-intervalos_2d
+intervalos_2d_2 <- ts_full_data %>% 
+  ggplot(aes(x = log(fb_costo_link_clicks), y = log(gtics_transacciones))) +
+  geom_point(alpha = 0.3) +
+  labs(
+    title = "Inversión vs transacción",
+    subtitle = "Escala logarítmica",
+    x = "Costo invertido en facebook",
+    y = "Transacciones"
+  )
+
+intervalos_2d_2 + intervalos_2d
 ```
 
 Cada rango está creado por los percentiles 0-33%, 33-66% y 66-100%. En los primeros dos grupos no existe una diferencia significativa en las transacciones, sin embargo, para el tercer grupo la diferencia es muy grande. Para entender mejor la relación que existe entre la inversión en facebook y las transacciones es posible involucrar más factores explicativos. El siguiente gráfico incorpora un panel diferenciador entre los días comerciales especiales y los días tradicionales.
@@ -1078,7 +1097,21 @@ scatter_plot_ingresos <- ts_full_data %>%
 ggplotly(scatter_plot_ingresos)
 ```
 
-En el gráfico anterior se muestra la relación anual entre la inversión realizada en facebook en campañas con propósito de realizar *click en links* y el número de transacciones. Esta relación se encuentra diferenciada por días festivos, es decir, los puntos se colorean distinto dependiendo de si existe un día festivo o venta especial como *día de las madres*, *buen fin* o *black friday*. Se aprecia que en general los días festivos tienen un mayor número de transacciones. Hay que considerar que en el caso del año 2022 aún no se cuenta con todas las observaciones. Al final del mes de noviembre es que habrá concluído el periodo de gran número de ventas.
+En el gráfico anterior se muestra la relación anual entre la inversión realizada en facebook en campañas con propósito de realizar *click en links* y el número de transacciones. Esta relación se encuentra diferenciada por días festivos, es decir, los puntos se colorean distinto dependiendo de si existe un día festivo o venta especial como *día de las madres*, *buen fin* o *black friday*. Se aprecia que en general los días festivos tienen un mayor número de transacciones. Hay que considerar que en el caso del año 2022 aún no se cuenta con todas las observaciones. Al final del mes de noviembre es que habrá concluido el periodo de gran número de ventas.
+
+El lector de la documentación podrá elegir a través de la siguiente aplicación cualquier par de variables a analizar de manera conjunta. Las transformaciones logarítmicas son una opción de uso que permiten una mejor visualización, así como los diferenciadores de días comerciales especiales y año. Mediante estos diferenciadores es posible encontrar distintos patrones que aportan valor a las estrategias de marketing digital.
+
+```{r, out.width="900pt"}
+knitr::include_url(
+  "https://acturio.shinyapps.io/ddi_eda_multi/",
+  height = "900px")
+```
+
+Para mayor comodidad de uso de la app, dar click [aquí](https://acturio.shinyapps.io/ddi_eda_multi/)
+
+
+
+
 
 
 
