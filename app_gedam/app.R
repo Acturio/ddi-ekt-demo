@@ -1,10 +1,13 @@
-library(dplyr)
 library(shiny)
+library(dplyr)
 library(ggplot2)
 library(stringr)
 library(patchwork)
 library(DT)
 library(magrittr)
+library(lubridate)
+library(tidyr)
+library(purrr)
 
 data <- readRDS("data.rds") %>%
   mutate(
@@ -36,7 +39,8 @@ ui <- fluidPage(
         checkboxInput(inputId = "log1", "Escala logarítmica"),
         selectInput(
           inputId = "covariable",
-          choices = data %>% select_if(is.numeric) %>%  names(),
+          choices = data %>% select_if(is.numeric) %>%  names() %>%
+            setdiff("gads_n_shopping"),
           label = "Variable explicativa",
           selected = "gads_costo_buscar"
         ),
@@ -48,7 +52,7 @@ ui <- fluidPage(
           inputId = "n_interval",
           label = "Número de intervalos",
           value = 3, min = 2, max = 10, step = 1),
-        width = 2
+        width = 4
       ),
 
       mainPanel(
@@ -60,7 +64,7 @@ ui <- fluidPage(
           inputId = "split_year",
           label = "Diferenciar por año"),
         plotOutput("trivariate_plot"),
-        width = 10
+        width = 7
       )
   )
 )
@@ -91,7 +95,7 @@ server <- function(input, output) {
 
     data_summary <- data_log %>%
       mutate(
-        y = cut_interval(!!sym(input$response), n = m1, dig.lab = 1, labels = F),
+        #y = cut_interval(!!sym(input$response), n = m1, dig.lab = 1, labels = F),
         x =  cut(!!sym(input$covariable),
                  breaks = c(quantile(pull(data_log, !!sym(input$covariable)),
                  probs = seq(0, 1, by = 1/as.numeric(input$n_interval)),
