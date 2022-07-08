@@ -231,14 +231,13 @@ stats_transacciones <- data %>%
     media = mean(gtics_transacciones, na.rm = T),
     `desviación media` = sd(gtics_transacciones, na.rm = T)/sqrt(n()),
     min = min(gtics_transacciones, na.rm = T),
-    q10 = quantile(gtics_transacciones, probs = 0.10, na.rm = T),
-    q25 = quantile(gtics_transacciones, probs = 0.25, na.rm = T),
+    q10 = round(quantile(gtics_transacciones, probs = 0.10, na.rm = T),0),
+    q25 = round(quantile(gtics_transacciones, probs = 0.25, na.rm = T),0),
     mediana = median(gtics_transacciones, na.rm = T),
-    q75 = quantile(gtics_transacciones, probs = 0.75, na.rm = T),
-    q90 = quantile(gtics_transacciones, probs = 0.90, na.rm = T),
+    q75 = round(quantile(gtics_transacciones, probs = 0.75, na.rm = T), 0),
+    q90 = round(quantile(gtics_transacciones, probs = 0.90, na.rm = T), 0),
     max = max(gtics_transacciones, na.rm = T),
-    `rango intercuartil` = q75 - q25,
-    `coeficiente variación` = `desviación estandar`/media
+    `rango intercuartil` = q75 - q25
   ) %>% 
   round(1)
 
@@ -864,6 +863,7 @@ data_cor <- M2 %>% .[,"gtics_transacciones"] %>%
   mutate(Correlation = round(Correlation, 4)) 
 
 data_cor %>% 
+  mutate(Correlation = round(Correlation, 2)) %>% 
   DT::datatable() %>% 
   formatStyle(
     'Correlation',

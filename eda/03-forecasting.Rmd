@@ -4,7 +4,7 @@ El propósito de este análisis es predecir las ventas en número de transaccion
 
 Teniendo este objetivo presente y una vez realizado el análisis descriptivo de la información, es factible proceder a crear y estructurar el conjunto de datos que servirá como insumo para realizar las predicciones.
 
-EL proceso de creación y estructuración de datos recibe el nombre de ingeniería de variables (feature engineering) y es la etapa en la que se crean nuevas características o atributos que contribuyen a la mejora de precisión en los pronósticos de ventas.
+El proceso de creación y estructuración de datos recibe el nombre de ingeniería de variables (feature engineering) y es la etapa en la que se crean nuevas características o atributos que contribuyen a la mejora de precisión en los pronósticos de ventas.
 
 ```{r workflow, echo=FALSE, fig.align='center', out.width='800pt', out.height='400pt'}
 knitr::include_graphics("img/02-forecasting/workflow.png")
@@ -16,7 +16,7 @@ En las siguientes secciones se especifican los pasos a seguir para la construcci
 
 ## Ingeniería de variables
 
-Para crear un modelo que permita obtener las mejores predicciones posibles, es necesario explotar la información disponible que permita encontrar los patrones relevantes de predicción. Dichos patrones pueden encontrarse en los datos originales, sin embargo, también existen otras formas de encontrar variables importantes de predicción mediante:
+Para crear un modelo que permita obtener las mejores predicciones posibles, es necesario explotar la información disponible que permita encontrar los patrones relevantes de predicción. Dichos patrones pueden encontrarse en los datos históricos, sin embargo, también existen otras formas de encontrar variables importantes de predicción mediante:
 
 * Transformación de las variables originales
 
@@ -77,26 +77,6 @@ library(sknifedatar)
 
 ts_full_data <- readRDS("data/ts_full_data.rds")
 
-# ts_full_data %>% 
-#   mutate(
-#     dia_semana = wday(fecha, label = T, abbr = F),
-#     mes = month(fecha, label = T, abbr = F),
-#     anio = year(fecha)) %>% 
-#   relocate(dia_semana, .after = fecha) %>% 
-#   relocate(mes, .after = dia_semana) %>% 
-#   relocate(anio, .after = mes) %>% 
-#   select(fecha, dia_semana, mes, anio, transacciones = gtics_transacciones) %>% 
-#   mutate(yoy =  fecha - as.period(dweeks(52))) %>% 
-#   left_join(
-#     ts_full_data %>% select(fecha, yoy_transacciones = gtics_transacciones),
-#     by = c("yoy" = "fecha")
-#   ) %>% 
-#   arrange(desc(fecha)) %>% 
-#   filter(fecha >= '2021-05-01') %>% 
-#   as_tibble() %>% 
-#   select(matches("transacciones")) %>% 
-#   cor(use = "everything")
-
 ts_full_data %>% 
   mutate(
     dia_semana = wday(fecha, label = T, abbr = F),
@@ -127,12 +107,6 @@ ts_full_data %>%
 
 Al calcular la correlación entre las ventas actuales y las ocurridas el año pasado, se reporta una correlación de 0.42, lo que sugiere que sí existe una mediana correlación con las transacciones del año anterior.
 
-<!-- ### Agregaciones por ventana -->
-<!-- Este tipo de de variables creadas se realiza mediante una agregación que puede ser el promedio, valores mínimo/máximo, desviaciones estandar, etc. sobre un intervalo de tiempo hacia atrás. El objetivo de estas variables es conocer la tendencia de los últimos días. Por ejemplo:  -->
-<!-- * El promedio de transacciones de los últimos 15 días -->
-<!-- * El rango entre los valores mínimo y máximo de transacciones en los últimos 7 días -->
-<!-- * Suma de transacciones de los últimos 10 días -->
-<!-- * etc. -->
 
 ```{r, eval=FALSE}
 library(zoo)
@@ -151,6 +125,7 @@ ts_full_data %>%
   ylab("Transacciones") + xlab("Fecha") +
   theme_classic()
 ```
+
 
 ## Partición
 
@@ -190,6 +165,12 @@ Realizando la ingeniería de variables para crear características de interés q
 model_data2 <- model_data %>% 
   mutate(transacciones = log(transacciones))
 
+recipe_time <- model_data2 %>% 
+  recipe(transacciones ~ fecha, data = .) %>%
+  step_date(fecha, features = c('dow','quarter','semester')) %>% 
+  step_lag(transacciones, lag = 365) %>% 
+  step_fourier(fecha, period = 365/12, K = 5)
+
 recipe_base <- model_data2 %>% 
   recipe(transacciones~., data=.) %>%
   step_date(fecha, features = c('quarter','semester')) %>% 
@@ -199,7 +180,7 @@ recipe_base <- model_data2 %>%
   step_dummy(dia_semana) %>% 
   step_interact(~starts_with("dia_semana"):yoy_transacciones) %>% 
   step_rm(yoy, anio, mes) %>% 
-  step_ts_impute(all_numeric(), period=365)
+  step_ts_impute(all_numeric(), period=365) 
   
 juice(prep(recipe_base)) %>% 
   relocate(transacciones, .after = fecha) %>% 
@@ -255,6 +236,13 @@ nnetar <- nnetar_reg(
 ) %>% 
   set_engine("nnetar")
 
+elasticnet <- linear_reg(
+  mode = "regression",
+  engine = "glmnet",
+  mixture = 0.5,
+  penalty = 0.0001
+)
+
 ```
 
 
@@ -262,14 +250,16 @@ nnetar <- nnetar_reg(
 ```{r}
 wfsets <- workflow_set(
   preproc = list(
-    base                  = recipe_base
+    base                = recipe_base,
+    time                = recipe_time
   ),
   models  = list(
     M_arima_boost       = auto_arima_boost,
     M_prophet_boost     = prophet_boost,
     M_prophet_boost_log = prophet_boost_log,
     M_mars              = mars,
-    M_nnetar            = nnetar
+    M_nnetar            = nnetar,
+    M_elasticnet        = elasticnet
   ),
   cross   = TRUE
 ) 
@@ -312,9 +302,10 @@ ranking <- modeltime_wfs_rank(wffits, rank_metric = "mape", minimize = T)
 wffits %>%
   select(-.fit_model, -.model_desc, -.type) %>% 
   separate(.model_id, c('recipe', 'model'), sep='_M_', remove=FALSE) %>% 
-  select(-.model_id, -recipe) %>% 
+  select(-.model_id) %>% 
   arrange(rmse) %>% 
   mutate_if(is.numeric, round, digits = 2) %>% 
+  relocate(recipe, .after = model) %>% 
   gt() %>% 
   tab_header(title='Evaluación de modelos')
 ```
@@ -352,12 +343,12 @@ modeltime_wfs_forecast(.wfs_results = wffits_best, .serie = model_data2, .split_
 pred <- modeltime_wfs_forecast(
   .wfs_results = wffits_best, 
   .serie = model_data2, 
-  .split_prop=split_prop)  %>% 
+  .split_prop = split_prop)  %>% 
   mutate(
     .value = exp(.value),
     .conf_lo = exp(.conf_lo),
     .conf_hi = exp(.conf_hi),
-  )
+  ) 
 
 multi_metric <- metric_set(rmse, rsq, mae, mape, smape, mase)
 
@@ -369,14 +360,15 @@ model_data2 %>% select(fecha, transacciones) %>%
   filter(fecha >= '2022-03-16', !is.na(.model_id)) %>%
   group_by(.model_id) %>% 
   multi_metric(truth = transacciones, estimate = .pred) %>% 
-  rename(model = .model_id) %>% 
+  separate(.model_id, c('recipe', 'model'), sep='_M_', remove=FALSE) %>% 
   mutate(
     model = str_remove(model, "base_M_"),
     .estimate = round(.estimate, 2)) %>% 
-  select(-.estimator) %>% 
+  select(-.model_id, -.estimator) %>%
+  relocate(recipe, .after = model) %>% 
   pivot_wider(names_from = .metric, values_from = .estimate) %>% 
   arrange(rmse) %>% 
-  select(model, mae, mape, mase, smape,	rmse, rsq) %>% 
+  select(model, recipe, mae, mape, mase, smape,	rmse, rsq) %>% 
   gt() %>% 
   tab_header(title='Evaluación final de modelos')
   
