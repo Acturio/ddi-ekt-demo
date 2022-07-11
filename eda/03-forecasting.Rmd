@@ -74,6 +74,7 @@ library(modeltime)
 library(sknifedatar)
 library(gt)
 library(sknifedatar)
+library(ranger)
 
 ts_full_data <- readRDS("data/ts_full_data.rds")
 
@@ -133,15 +134,8 @@ El proceso para desarrollar un modelo predictivo implica necesariamente particio
 
 ```{r}
 model_data <- ts_full_data %>% 
-  mutate(
-    dia_semana = wday(fecha, label = T, abbr = F),
-    mes = month(fecha, label = T, abbr = F),
-    anio = year(fecha)) %>% 
-  relocate(dia_semana, .after = fecha) %>% 
-  relocate(mes, .after = dia_semana) %>% 
-  relocate(anio, .after = mes) %>% 
-  select(fecha, dia_semana, mes, anio, transacciones = gtics_transacciones, 
-         contains("costo"), gtics_n_productos) %>% 
+  select(fecha, transacciones = gtics_transacciones, gtics_usuarios,
+         contains("costo")) %>% 
   mutate(yoy =  fecha - as.period(dweeks(52))) %>% 
   left_join(
     ts_full_data %>% select(fecha, yoy_transacciones = gtics_transacciones),
@@ -163,24 +157,61 @@ Realizando la ingeniería de variables para crear características de interés q
 
 ```{r}
 model_data2 <- model_data %>% 
-  mutate(transacciones = log(transacciones))
+  mutate(
+    transacciones = log(transacciones),
+    festivo = case_when(
+      (month(fecha) == 5) & (between(day(fecha), 1, 20)) ~ "Sí",
+      between(fecha, as_date("2020-11-09"), as_date('2020-11-20')) ~ "Sí",
+      between(fecha, as_date("2021-11-10"), as_date('2021-11-16')) ~ "Sí",
+      between(fecha, as_date("2020-11-25"), as_date('2020-11-30')) ~ "Sí",
+      between(fecha, as_date("2021-11-25"), as_date('2021-11-30')) ~ "Sí",
+      between(fecha, as_date("2020-07-12"), as_date('2020-07-25')) ~ "Sí",
+      between(fecha, as_date("2021-07-12"), as_date('2021-07-25')) ~ "Sí",
+      between(fecha, as_date("2021-03-24"), as_date('2021-03-28')) ~ "Sí",
+      between(fecha, as_date("2022-03-24"), as_date('2022-03-28')) ~ "Sí",
+      TRUE ~ "No")
+  )
 
 recipe_time <- model_data2 %>% 
   recipe(transacciones ~ fecha, data = .) %>%
-  step_date(fecha, features = c('dow','quarter','semester')) %>% 
+  step_date(fecha, features = c('dow','quarter', 'month', 'semester')) %>% 
   step_lag(transacciones, lag = 365) %>% 
   step_fourier(fecha, period = 365/12, K = 5)
 
+
+# step_box_cox
+# 
+
 recipe_base <- model_data2 %>% 
   recipe(transacciones~., data=.) %>%
-  step_date(fecha, features = c('quarter','semester')) %>% 
+  step_date(fecha, features = c('dow', 'month')) %>% 
   step_lag(transacciones, lag = 10:14) %>% 
-  step_fourier(fecha, period = 365/12, K = 5) %>% 
-  step_mutate(yoy_transacciones = log(yoy_transacciones)) %>% 
-  step_dummy(dia_semana) %>% 
-  step_interact(~starts_with("dia_semana"):yoy_transacciones) %>% 
-  step_rm(yoy, anio, mes) %>% 
-  step_ts_impute(all_numeric(), period=365) 
+  #step_lag(gtics_usuarios, lag = 10:14) %>% 
+  #step_lag(gtics_sesiones, lag = 10:14) %>% 
+  step_fourier(fecha, period = 365/12, K = 10) %>% 
+  step_mutate(
+    yoy_transacciones = log(yoy_transacciones)
+    ) %>% 
+  step_dummy(fecha_dow, fecha_month) %>% 
+  step_dummy(festivo) %>% 
+  step_interact(~starts_with("fecha_dow"):yoy_transacciones) %>% 
+  step_interact(~starts_with("festivo"):yoy_transacciones) %>% 
+  #step_interact(~contains("fecha_dow_"):gtics_usuarios) %>% 
+  step_interact(~festivo_Sí:gtics_usuarios) %>% 
+  step_interact(~festivo_Sí:fb_costo_link_clicks) %>% 
+  step_interact(~festivo_Sí:gads_costo_buscar) %>% 
+  step_interact(~festivo_Sí:fb_costo_reach) %>% 
+  step_interact(~festivo_Sí:gads_costo_display) %>% 
+  step_interact(~festivo_Sí:gads_costo_vídeo) %>% 
+  step_interact(~fecha_dow_lun:fb_costo_link_clicks) %>%
+  step_interact(~fecha_dow_mar:fb_costo_link_clicks) %>%
+  step_interact(~fecha_dow_mié:fb_costo_link_clicks) %>%
+  step_interact(~fecha_dow_jue:fb_costo_link_clicks) %>%
+  step_interact(~fecha_dow_vie:fb_costo_link_clicks) %>%
+  step_interact(~fecha_dow_sáb:fb_costo_link_clicks) %>%
+  step_rm(yoy) %>% 
+  step_filter(fecha >= '2021-10-31') %>% 
+  step_ts_impute(all_numeric_predictors(), period=365) 
   
 juice(prep(recipe_base)) %>% 
   relocate(transacciones, .after = fecha) %>% 
@@ -211,18 +242,18 @@ auto_arima_boost <- arima_boost(
 prophet_boost <- prophet_boost(
   mode = 'regression',
   seasonality_yearly = TRUE,
-  seasonality_weekly = TRUE) %>% 
+  seasonality_weekly = TRUE,
+  trees = 5000) %>% 
   set_engine("prophet_xgboost")
 
 # prophet_xgboost logistic
 prophet_boost_log <- prophet_boost(
     mode = 'regression',
-    changepoint_range = 0.8,
     logistic_floor = min(model_data2$transacciones),
     logistic_cap = max(model_data2$transacciones),
     growth = 'logistic',
     seasonality_yearly = TRUE,
-    seasonality_weekly = TRUE
+    seasonality_weekly = TRUE,
   ) %>%
   set_engine("prophet_xgboost")
 
@@ -243,15 +274,41 @@ elasticnet <- linear_reg(
   penalty = 0.0001
 )
 
+rf_model <- rand_forest(
+  mode = "regression",
+  mtry = 6,
+  min_n = 7,
+  trees = 5000,
+  engine = "ranger"
+)
+
 ```
 
+```{r}
+split_data <- model_data2 %>% initial_time_split(prop = 0.9)
+training_data <- training(split_data)
+testing_data <- testing(split_data)
 
+tscv_data <- time_series_cv(
+  data = training_data,
+  date_var = fecha,
+  initial = "13 months",
+  assess = "1 months",
+  skip = "1 months",
+  cumulative = TRUE,
+  slice_limit = 6
+  ) 
+
+tscv_data %>% 
+  tk_time_series_cv_plan() %>% 
+  plot_time_series_cv_plan(fecha, transacciones)
+
+```
 
 ```{r}
 wfsets <- workflow_set(
   preproc = list(
-    base                = recipe_base,
-    time                = recipe_time
+    base                = recipe_base
   ),
   models  = list(
     M_arima_boost       = auto_arima_boost,
@@ -259,7 +316,7 @@ wfsets <- workflow_set(
     M_prophet_boost_log = prophet_boost_log,
     M_mars              = mars,
     M_nnetar            = nnetar,
-    M_elasticnet        = elasticnet
+    M_random_forest     = rf_model
   ),
   cross   = TRUE
 ) 
@@ -269,13 +326,13 @@ wfsets <- workflow_set(
 
 ```{r}
 set.seed(1234)
+
 split_prop <- 0.9
 wffits <- modeltime_wfs_fit(
   .wfsets = wfsets, 
   .split_prop = split_prop, 
   .serie=model_data2
   )
-
 ```
 
 
@@ -320,7 +377,7 @@ Al conocer las métricas de desempeño de cada uno de los modelos, es posible di
 wffits_best <- modeltime_wfs_bestmodel(
   .wfs_results = ranking, 
   .model = "top 2", 
-  .metric = "rmse", 
+  .metric = "mape", 
   .minimize = TRUE
   )
 ```
@@ -333,8 +390,8 @@ modeltime_wfs_forecast(.wfs_results = wffits_best, .serie = model_data2, .split_
     .conf_hi = exp(.conf_hi),
   ) %>% 
   plot_modeltime_forecast(
-    .interactive=TRUE,
-    .conf_interval_alpha = 0.05,
+    .interactive = TRUE,
+    .conf_interval_alpha = 0.1,
     .plotly_slider = T
     )
 ```
@@ -373,58 +430,4 @@ model_data2 %>% select(fecha, transacciones) %>%
   tab_header(title='Evaluación final de modelos')
   
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-```{r, eval=FALSE}
-wfrefits <- modeltime_wfs_refit(.wfs_results = wffits_best, .serie = model_data2)
-```
-
-```{r, out.width="600pt", eval=FALSE}
-wfrefits_forecast <- modeltime_wfs_forecast(
-  .wfs_results = wfrefits, 
-  .serie = model_data2, 
-  #.h = '1 weeks',
-  .split_prop = split_prop
-  ) 
-
-wfrefits_forecast %>% 
-  mutate(
-    .value = exp(.value),
-    .conf_lo = exp(.conf_lo),
-    .conf_hi = exp(.conf_hi),
-  ) %>% 
-  plot_modeltime_forecast(
-  .interactive = T,
-  .conf_interval_alpha = 0.05,
-  .plotly_slider = T
-  )
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
