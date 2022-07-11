@@ -174,6 +174,11 @@ model_data2 <- model_data %>%
       between(fecha, as_date("2021-07-12"), as_date('2021-07-25')) ~ "Sí",
       between(fecha, as_date("2021-03-24"), as_date('2021-03-28')) ~ "Sí",
       between(fecha, as_date("2022-03-24"), as_date('2022-03-28')) ~ "Sí",
+      between(fecha, as_date("2020-07-12"), as_date('2020-07-17')) ~ "Sí",
+      between(fecha, as_date("2021-07-12"), as_date('2021-07-17')) ~ "Sí",
+      between(fecha, as_date("2022-07-12"), as_date('2022-07-17')) ~ "Sí",
+      between(fecha, as_date("2021-09-24"), as_date('2021-09-30')) ~ "Sí",
+      between(fecha, as_date("2022-09-24"), as_date('2022-09-30')) ~ "Sí",
       TRUE ~ "No")
   )
 
@@ -396,8 +401,8 @@ wfsets <- workflow_set(
   ),
   models  = list(
     M_arima_boost       = auto_arima_boost,
-    M_prophet_boost     = prophet_boost,
-    M_prophet_boost_log = prophet_boost_log,
+    #M_prophet_boost     = prophet_boost,
+    #M_prophet_boost_log = prophet_boost_log,
     M_mars              = mars,
     M_nnetar_45         = nnetar_45,
     M_random_forest     = rf_model,
@@ -528,6 +533,8 @@ El mejoramiento de este modelo y sus predicciones está sujeto a la acumulación
 * Calendario de fechas festivas locales especiales 
 
 * Calendario de fechas comerciales especiales 
+
+* Calendario de actividad comercial de la competencia
 
 * Serie histórica de paridad dolar-quetzal.
 
