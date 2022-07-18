@@ -26,20 +26,72 @@ dashboardPage(
       id = 'sidebar',
       style = "position: relative; overflow: visible;",
 
-      menuItem(" Instrucciones", tabName = "info", icon = icon(name = "info"), startExpanded = T),
       menuItem(
-        " Análisis Univariado", icon = icon(name = "chart-area"), startExpanded = F,
-          shinyWidgets::prettyRadioButtons(
-            inputId = "button_coord",
-            label = "Seleccione método",
-            choices = c("Dirección" = "dir", "GPS" = "gps", "Coordenadas" = "coord"),
-            selected = "coord",
-            bigger = T,
-            animation = "smoth"
+        " Instrucciones",
+        tabName = "info",
+        icon = icon(name = "info"),
+        startExpanded = F
+      ),
+      menuItem(
+        " Análisis Univariado",
+        tabName = "uni_eda",
+        icon = icon(name = "chart-area"),
+        startExpanded = F,
+
+        shinyWidgets::prettyCheckboxGroup(
+          inputId = "sources",
+          label = "Fuentes de datos",
+          choices = c("Google Analytics", "Google Ads", "Facebook Ads"),
+          selected = c("Google Analytics", "Google Ads", "Facebook Ads"),
+          fill = T,
+          icon = icon("check"),
+          animation = "tada",
+          status = "primary"
+        ),
+
+        shinyWidgets::pickerInput(
+          inputId = "variable",
+          label = "Variable a analizar",
+          choices = letters,
+          selected = "a",
+          multiple = F,
+          options = list(
+            `actions-box` = TRUE,
+            `deselect-all-text` = "None"
+            )
+        ),
+
+        shinyWidgets::prettyCheckbox(
+          inputId = "logscale",
+          label = "Escala logarítmica",
+          fill = T,
+          icon = icon("check"),
+          animation = "tada",
+          status = "primary"
+        ),
+
+        shinyWidgets::prettyRadioButtons(
+          inputId = "plot_type",
+          label = "Seleccione tipo de gráfico",
+          choices = c("Histograma", "Boxplot", "Violín"),
+          selected = "Histograma",
+          bigger = T,
+          animation = "tada",
+          status = "primary"
           )
       ),
-      menuItem("Data Storytelling", icon = icon(name = "dashboard"), startExpanded = F),
-      menuItem("Pronósticos e-commerce", icon = icon(name = "chart-line"), startExpanded = F)
+      menuItem(
+        "Data Storytelling",
+        tabName = "multi_eda",
+        icon = icon(name = "dashboard"),
+        startExpanded = F
+      ),
+      menuItem(
+        "Pronósticos e-commerce",
+        tabName = "forecast",
+        icon = icon(name = "chart-line"),
+        startExpanded = F
+      )
     )
   ),
 
@@ -57,8 +109,17 @@ dashboardPage(
     tabItems(
       tabItem(
         tabName = 'info',
-        div( id = 'instrucciones', instrucciones() ),
+        div( id = 'contact', contact() ),
         div( id = 'help_data_source', data_source() ),
+      ),
+      tabItem(
+        tabName = "uni_eda"
+      ),
+      tabItem(
+        tabName = "multi_eda"
+      ),
+      tabItem(
+        tabName = "forecast"
       )
     )
   )

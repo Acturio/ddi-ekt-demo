@@ -23,9 +23,9 @@ loadingLogo <- function(href, src, loadingsrc, height = NULL, width = NULL, alt 
 }
 
 
-instrucciones <- function(){
+contact <- function(){
  fluidRow(
-  h2( " Instrucciones" ),
+  h2( " Contacto" ),
   tags$p(" Esta aplicación DEMO permite conocer la historia de datos usados y recopilados en 
           la actividad de e-commerce del portal de Elektra. Esta información es usada para 
           pronosticar un rango de las transacciones futuras."),
