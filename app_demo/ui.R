@@ -1,6 +1,8 @@
 library(shiny)
+library(shinyjs)
 library(shinydashboard)
 library(shinyWidgets)
+library(dplyr)
 
 source("global.R")
 
@@ -21,23 +23,30 @@ dashboardPage(
     ),
 
     tags$br(),
+    #useShinyjs(),
 
     sidebarMenu(
       id = 'sidebar',
       style = "position: relative; overflow: visible;",
 
       menuItem(
-        " Instrucciones",
+        "Instrucciones",
         tabName = "info",
         icon = icon(name = "info"),
         startExpanded = F
       ),
       menuItem(
-        " Análisis Univariado",
+        "Análisis Univariado",
         tabName = "uni_eda",
         icon = icon(name = "chart-area"),
-        startExpanded = F,
+        startExpanded = F
+      ),
 
+      conditionalPanel(
+        "input.sidebar == 'uni_eda'",
+        fluidRow(
+          column(1),
+          column(11,
         shinyWidgets::prettyCheckboxGroup(
           inputId = "sources",
           label = "Fuentes de datos",
@@ -48,19 +57,17 @@ dashboardPage(
           animation = "tada",
           status = "primary"
         ),
-
         shinyWidgets::pickerInput(
           inputId = "variable",
           label = "Variable a analizar",
-          choices = letters,
-          selected = "a",
+          choices = data %>% select_if(is.numeric) %>%  names(),
+          selected = "gtics_transacciones",
           multiple = F,
           options = list(
             `actions-box` = TRUE,
             `deselect-all-text` = "None"
             )
         ),
-
         shinyWidgets::prettyCheckbox(
           inputId = "logscale",
           label = "Escala logarítmica",
@@ -69,7 +76,6 @@ dashboardPage(
           animation = "tada",
           status = "primary"
         ),
-
         shinyWidgets::prettyRadioButtons(
           inputId = "plot_type",
           label = "Seleccione tipo de gráfico",
@@ -79,6 +85,8 @@ dashboardPage(
           animation = "tada",
           status = "primary"
           )
+          )
+        )
       ),
       menuItem(
         "Data Storytelling",
@@ -91,7 +99,8 @@ dashboardPage(
         tabName = "forecast",
         icon = icon(name = "chart-line"),
         startExpanded = F
-      )
+      ),
+      hr()
     )
   ),
 
@@ -102,18 +111,24 @@ dashboardPage(
       tags$style( HTML("hr {border-top: 1px solid #000000;}") ),
 
       ## to not show error message in shiny
-      tags$style( HTML(".shiny-output-error { visibility: hidden; }") ),
-      tags$style( HTML(".shiny-output-error:before { visibility: hidden; }") ),
+      #tags$style( HTML(".shiny-output-error { visibility: hidden; }") ),
+      #tags$style( HTML(".shiny-output-error:before { visibility: hidden; }") ),
       ),
 
     tabItems(
       tabItem(
         tabName = 'info',
-        div( id = 'contact', contact() ),
+        div( id = 'objective', objective() ),
         div( id = 'help_data_source', data_source() ),
+        div( id = 'nomenclature', nomenclature() ),
+        div( id = 'contact', contact() ),
       ),
       tabItem(
-        tabName = "uni_eda"
+        tabName = "uni_eda",
+        fluidRow(
+          plotOutput("univariate_plot"),
+          dataTableOutput("statistics")
+        )
       ),
       tabItem(
         tabName = "multi_eda"
