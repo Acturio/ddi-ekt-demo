@@ -28,7 +28,7 @@ output$univariate_plot <- renderPlot({
   if(input$plot_type == "Histograma"){
     dist_plot <- data_log %>%
       ggplot(aes_string(x = input$variable)) +
-      geom_histogram(fill = "lightblue", color = "blue") +
+      geom_histogram(fill = "orange", color = "black") +
       geom_vline(aes(xintercept = median(data_log[,input$variable] %>% pull()),
                      color = "Mediana")) +
       geom_vline(aes(xintercept = mean(data_log[,input$variable] %>% pull()), color = "Media")) +
@@ -42,11 +42,29 @@ output$univariate_plot <- renderPlot({
         y = "Conteo",
         subtitle =  str_c("Fuente: ", fuente))
   }
+  else if(input$plot_type == "Boxplot"){
+
+    dist_plot <- data_log %>%
+      ggplot(aes_string(x = 1, y = input$variable)) +
+      geom_boxplot(fill = "orange", width=0.1) +
+      stat_summary(fun.data=data_summary, color = "red") +
+      coord_flip() +
+      scale_y_continuous(n.breaks = 10) +
+      theme(axis.text.x=element_blank(), axis.ticks.x=element_blank()) +
+      labs(
+        title = "Boxplot",
+        subtitle =  str_c("Fuente: ", fuente),
+        y = input$variable %>%
+          str_remove_all(pattern = "(gads_)|(fb_)|(gtics_)") %>%
+          str_remove_all(pattern = "_.*") %>%
+          str_replace(pattern = "^n$", "Número de campañas activas"),
+        x = "")
+  }
   else if(input$plot_type == "Violín"){
 
     dist_plot <- data_log %>%
       ggplot(aes_string(x = 1, y = input$variable)) +
-      geom_violin(fill = "purple") +
+      geom_violin(fill = "orange") +
       geom_boxplot(width=0.1) +
       stat_summary(fun.data=data_summary, color = "red") +
       #coord_flip() +

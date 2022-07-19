@@ -8,9 +8,18 @@ source("global.R")
 
 dashboardPage(
   title = "Elektra e-commerce",
-  skin = "black",
+  skin = "yellow",
 
-  dashboardHeader(title = "Future Sales Demo"),
+  dashboardHeader(
+    title = "Future Sales Demo",
+
+    tags$li(a(href = 'https://www.elektra.com.gt/',
+              img(src = 'elektra-logo.png',
+                  title = "Elektra", height = "30px"),
+              style = "padding-top:10px; padding-bottom:10px;"),
+              class = "dropdown"
+            )
+    ),
 
   dashboardSidebar(
 
@@ -23,6 +32,10 @@ dashboardPage(
     ),
 
     tags$br(),
+    tags$head(
+      tags$style(HTML('#checkbox :after, #checkbox :before{background-color:#bff442;}')),
+      tags$style(".pretty.p-default input:checked~.state label:after {background-color: orange !important;}")
+    ),
     #useShinyjs(),
 
     sidebarMenu(
@@ -47,44 +60,48 @@ dashboardPage(
         fluidRow(
           column(1),
           column(11,
-        shinyWidgets::prettyCheckboxGroup(
-          inputId = "sources",
-          label = "Fuentes de datos",
-          choices = c("Google Analytics", "Google Ads", "Facebook Ads"),
-          selected = c("Google Analytics", "Google Ads", "Facebook Ads"),
-          fill = T,
-          icon = icon("check"),
-          animation = "tada",
-          status = "primary"
-        ),
-        shinyWidgets::pickerInput(
-          inputId = "variable",
-          label = "Variable a analizar",
-          choices = data %>% select_if(is.numeric) %>%  names(),
-          selected = "gtics_transacciones",
-          multiple = F,
-          options = list(
-            `actions-box` = TRUE,
-            `deselect-all-text` = "None"
+          # shinyWidgets::awesomeCheckboxGroup(
+          #   inputId = "sources",
+          #   label = "Fuentes de datos",
+          #   choices = c("Google Analytics", "Google Ads", "Facebook Ads"),
+          #   selected = c("Google Analytics", "Google Ads", "Facebook Ads"),
+          #   status = "warning"
+          # ),
+          shinyWidgets::prettyCheckboxGroup(
+            inputId = "sources",
+            label = "Fuentes de datos",
+            choices = c("Google Analytics", "Google Ads", "Facebook Ads"),
+            selected = c("Google Analytics", "Google Ads", "Facebook Ads"),
+            icon = icon("check"),
+            status = "warning",
+            animation = "rotate",
+            fill = TRUE,
+          ),
+          shinyWidgets::pickerInput(
+            inputId = "variable",
+            label = "Variable a analizar",
+            choices = data %>% select_if(is.numeric) %>%  names(),
+            selected = "gtics_transacciones",
+            multiple = F
+          ),
+          shinyWidgets::prettyCheckbox(
+            inputId = "logscale",
+            label = "Escala logarítmica",
+            fill = T,
+            icon = icon("check"),
+            animation = "jelly",
+            status = "warning"
+          ),
+          shinyWidgets::prettyRadioButtons(
+            inputId = "plot_type",
+            label = "Seleccione tipo de gráfico",
+            choices = c("Histograma", "Boxplot", "Violín"),
+            selected = "Histograma",
+            icon = icon("check"),
+            bigger = T,
+            animation = "pulse",
+            status = "warning"
             )
-        ),
-        shinyWidgets::prettyCheckbox(
-          inputId = "logscale",
-          label = "Escala logarítmica",
-          fill = T,
-          icon = icon("check"),
-          animation = "tada",
-          status = "primary"
-        ),
-        shinyWidgets::prettyRadioButtons(
-          inputId = "plot_type",
-          label = "Seleccione tipo de gráfico",
-          choices = c("Histograma", "Boxplot", "Violín"),
-          selected = "Histograma",
-          bigger = T,
-          animation = "tada",
-          status = "primary"
-          )
           )
         )
       ),
