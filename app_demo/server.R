@@ -10,6 +10,13 @@ library(purrr)
 library(DT)
 library(googleVis)
 library(plotly)
+library(modeltime)
+
+library(tidymodels)
+library(workflowsets)
+library(timetk)
+library(sknifedatar)
+library(gt)
 
 shinyServer(function(input, output) {
 
@@ -329,4 +336,21 @@ output$trivariate_yearly_plot <- renderPlot({
       ) +
     theme(legend.position="bottom")
   })
+
+predictions <- reactive({
+
+  table_forecast <- map(list_models, function( .wf = list_models){
+
+    .model_table <- .wf$.fit_model[[1]] %>%
+      modeltime_calibrate(new_data = testing_data, quiet = FALSE) %>%
+      mutate(.model_desc = "PREDICTION")
+  })
+
+pred <- bind_rows(table_forecast, .id = ".model_id") %>%
+  modeltime_forecast(
+    actual_data = training_data,
+    new_data = testing_data
+  )
+})
+
 })

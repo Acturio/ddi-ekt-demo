@@ -1,5 +1,6 @@
 library(dplyr)
 library(lubridate)
+library(rsample)
 
 data <- readRDS("data/data.rds") %>%
   mutate(
@@ -21,6 +22,12 @@ data <- readRDS("data/data.rds") %>%
       between(fecha, as_date("2022-09-24"), as_date('2022-09-30')) ~ "Sí",
       TRUE ~ "No")) %>%
   filter(fecha >= "2020-05-01")
+
+model_data <- readRDS("data/model_data.rds")
+
+split_data <- model_data %>% initial_time_split(prop = 0.98)
+testing_data <- rsample::testing(split_data)
+training_data <- rsample::training(split_data)
 
 loadingLogo <- function(href, src, loadingsrc, height = NULL, width = NULL, alt = NULL) {
   tagList(
@@ -144,16 +151,15 @@ nomenclature <- function(){
  )
 }
 
-
-
 data_summary <- function(x) {
    m <- mean(x)
    ymin <- quantile(x, probs = 0.1) %>% unname()
    ymax <- quantile(x, probs = 0.9) %>% unname()
-   return(c("y"=m,"ymin"=ymin,"ymax"=ymax))
+   return(c("y" = m,"ymin" = ymin,"ymax" = ymax))
 }
 
-
-
+wffits_best <- readRDS("models/best_3_models.rds")
+list_models <- wffits_best %>%
+  split(.$.model_id)
 
 

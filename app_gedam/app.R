@@ -12,23 +12,23 @@ library(purrr)
 data <- readRDS("data.rds") %>%
   mutate(
     Festivo = case_when(
-between(fecha, as_date("2021-04-27"), as_date('2021-05-16')) ~ "Sí",
-      between(fecha, as_date("2022-04-28"), as_date('2022-05-14')) ~ "Sí",
-      between(fecha, as_date("2020-11-09"), as_date('2020-11-20')) ~ "Sí",
-      between(fecha, as_date("2021-11-10"), as_date('2021-11-16')) ~ "Sí",
-      between(fecha, as_date("2020-11-25"), as_date('2020-11-30')) ~ "Sí",
-      between(fecha, as_date("2021-11-25"), as_date('2021-11-30')) ~ "Sí",
-      between(fecha, as_date("2020-07-12"), as_date('2020-07-25')) ~ "Sí",
-      between(fecha, as_date("2021-07-12"), as_date('2021-07-25')) ~ "Sí",
-      between(fecha, as_date("2021-03-24"), as_date('2021-03-28')) ~ "Sí",
-      between(fecha, as_date("2022-03-24"), as_date('2022-03-28')) ~ "Sí",
       between(fecha, as_date("2020-07-12"), as_date('2020-07-17')) ~ "Sí",
+      between(fecha, as_date("2020-11-09"), as_date('2020-11-20')) ~ "Sí",
+      between(fecha, as_date("2020-11-25"), as_date('2020-11-30')) ~ "Sí",
+
+      between(fecha, as_date("2021-03-24"), as_date('2021-03-28')) ~ "Sí",
+      between(fecha, as_date("2021-04-27"), as_date('2021-05-16')) ~ "Sí",
       between(fecha, as_date("2021-07-12"), as_date('2021-07-17')) ~ "Sí",
-      between(fecha, as_date("2022-07-12"), as_date('2022-07-17')) ~ "Sí",
       between(fecha, as_date("2021-09-24"), as_date('2021-09-30')) ~ "Sí",
+      between(fecha, as_date("2021-11-10"), as_date('2021-11-16')) ~ "Sí",
+      between(fecha, as_date("2021-11-25"), as_date('2021-11-30')) ~ "Sí",
+
+      between(fecha, as_date("2022-03-24"), as_date('2022-03-28')) ~ "Sí",
+      between(fecha, as_date("2022-04-28"), as_date('2022-05-14')) ~ "Sí",
+      between(fecha, as_date("2022-07-12"), as_date('2022-07-17')) ~ "Sí",
       between(fecha, as_date("2022-09-24"), as_date('2022-09-30')) ~ "Sí",
       TRUE ~ "No")) %>%
-  filter(fecha >= "2020-06-01")
+  filter(fecha >= "2020-05-01")
 
 options(shiny.sanitize.errors = F)
 
