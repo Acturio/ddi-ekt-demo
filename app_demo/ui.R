@@ -1,28 +1,42 @@
 library(shiny)
+#library(shinyjs)
 library(shinydashboard)
+#library(shinydashboardPlus)
 library(shinyWidgets)
 library(dplyr)
 library(plotly)
 library(DT)
+library(shinycssloaders)
+library(readr)
 
 source("global.R")
 
 dashboardPage(
+
   title = "Elektra e-commerce",
   skin = "yellow",
 
   dashboardHeader(
     title = "Future Sales Demo",
 
-    tags$li(a(href = 'https://www.elektra.com.gt/',
-              img(src = 'elektra-logo.png',
-                  title = "Elektra", height = "30px"),
-              style = "padding-top:10px; padding-bottom:10px;"),
-              class = "dropdown"
-            )
+    tags$li(
+      a(href = 'https://www.elektra.com.gt/',
+        img(src = 'elektra-logo.png',
+            title = "Elektra", height = "30px"),
+        style = "padding-top:10px; padding-bottom:10px;"),
+      class = "dropdown"
+      )
     ),
 
   dashboardSidebar(
+
+    tags$head(
+      tags$style(HTML('#checkbox :after, #checkbox :before{background-color:#bff442;}')),
+      tags$style(".pretty.p-default input:checked~.state label:after {background-color: #f39c12 !important;}"),
+      tags$style("@import url(https://use.fontawesome.com/releases/v6.0.0/css/all.css);"),
+      tags$style("@import url(https://use.fontawesome.com/releases/v6.1.0/css/all.css);"),
+      tags$style(HTML('#file{height: 30px}'))
+    ),
 
     loadingLogo(
       href = 'https://ddilatam.com/',
@@ -31,14 +45,7 @@ dashboardPage(
       height = "70%",
       width = "100%"
     ),
-
     tags$br(),
-    tags$head(
-      tags$style(HTML('#checkbox :after, #checkbox :before{background-color:#bff442;}')),
-      tags$style(".pretty.p-default input:checked~.state label:after {background-color: orange !important;}"),
-      tags$style("@import url(https://use.fontawesome.com/releases/v6.0.0/css/all.css);"),
-      tags$style("@import url(https://use.fontawesome.com/releases/v6.1.0/css/all.css);")
-    ),
 
     sidebarMenu(
       id = 'sidebar',
@@ -169,6 +176,42 @@ dashboardPage(
         icon = icon(name = "chart-line"),
         startExpanded = F
       ),
+
+      conditionalPanel(
+        "input.sidebar == 'forecast'",
+        fluidRow(
+          column(1),
+          column(11,
+            tags$br(),
+            downloadBttn(
+              outputId = "download",
+              label = "Descargar muestra",
+              style = "float",
+              color = "default",
+              size = "xs",
+              block = T,
+              no_outline = TRUE,
+              icon = shiny::icon("download")
+            ),
+            shinyjs::useShinyjs(),
+            fileInput(
+              inputId = "file",
+              label = "Cargar archivo",
+              multiple = FALSE,
+              accept = ".csv"
+              ),
+            shinyWidgets::numericInputIcon(
+              inputId = "alpha",
+              label = "Nivel de confianza (%)",
+              value = 80, min = 70, max = 95, step = 5,
+              size = "sm",
+              icon = icon("arrows-left-right-to-line", verify_va = F)
+            ),
+            tags$br(),
+            tags$br()
+          )
+        )
+      ),
       hr()
     )
   ),
@@ -177,7 +220,7 @@ dashboardPage(
 
     tags$head(
       tags$style(HTML(".tab-content { padding-left: 20px; padding-right: 30px; }")) ,
-      tags$style( HTML("hr {border-top: 1px solid #000000;}") ),
+      tags$style( HTML("hr {border-top: 1px solid #000000;}") )
 
       ## to not show error message in shiny
       #tags$style( HTML(".shiny-output-error { visibility: hidden; }") ),
@@ -213,7 +256,15 @@ dashboardPage(
         )
       ),
       tabItem(
-        tabName = "forecast"
+        tabName = "forecast",
+        fluidRow(
+          plotlyOutput("ts_prediction")%>%
+          shinyWidgets::addSpinner(spin = "folding-cube", color = "#f39c12"),
+          tags$br(),
+          dataTableOutput("predictions")%>%
+          shinyWidgets::addSpinner(spin = "folding-cube", color = "#f39c12")#,
+          #dataTableOutput("new_data")
+        ),
       )
     )
   )

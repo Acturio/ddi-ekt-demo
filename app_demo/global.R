@@ -26,7 +26,9 @@ data <- readRDS("data/data.rds") %>%
 model_data <- readRDS("data/model_data.rds")
 
 split_data <- model_data %>% initial_time_split(prop = 0.98)
+
 testing_data <- rsample::testing(split_data)
+
 training_data <- rsample::training(split_data)
 
 loadingLogo <- function(href, src, loadingsrc, height = NULL, width = NULL, alt = NULL) {

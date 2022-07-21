@@ -75,7 +75,6 @@ library(timetk)
 library(modeltime)
 library(sknifedatar)
 library(gt)
-library(sknifedatar)
 
 ts_full_data <- readRDS("data/ts_full_data.rds")
 
@@ -135,7 +134,7 @@ El proceso para desarrollar un modelo predictivo implica necesariamente particio
 
 ```{r}
 model_data <- ts_full_data %>% 
-  select(fecha, transacciones = gtics_transacciones, gtics_usuarios,
+  select(fecha, transacciones = gtics_transacciones,
          contains("costo")) %>% 
   mutate(yoy =  fecha - as.period(dweeks(52))) %>% 
   left_join(
@@ -204,7 +203,6 @@ tscv_data %>%
 ## Ajuste de modelos
 
 ```{r, include=FALSE}
-
 recipe_time <- model_data2 %>% 
   recipe(transacciones ~ fecha, data = .) %>%
   step_timeseries_signature(fecha) %>% 
@@ -238,7 +236,7 @@ recipe_base <- model_data2 %>%
   step_dummy(festivo) %>% 
   step_interact(~starts_with("fecha_dow"):yoy_transacciones) %>% 
   step_interact(~starts_with("festivo"):yoy_transacciones) %>% 
-  step_interact(~festivo_Sí:gtics_usuarios) %>% 
+  #step_interact(~festivo_Sí:gtics_usuarios) %>% 
   step_interact(~festivo_Sí:adstock_fb_costo_link_clicks) %>% 
   step_interact(~festivo_Sí:adstock_gads_costo_buscar) %>% 
   step_interact(~festivo_Sí:adstock_fb_costo_reach) %>% 
@@ -298,19 +296,28 @@ recipe_base <- model_data2 %>%
   step_filter(fecha >= '2021-10-31') 
   
 recipe_wod <- recipe_base %>% step_rm(fecha)
-
-juice(prep(recipe_base)) %>% 
-  relocate(transacciones, .after = fecha) %>% 
-  glimpse()
 ```
 
-Los modelos que serán ajustados y posteriormente comparados en su desempeño son:
+A continuación se muestra el listado de características usadas en la implementación del DEMO predictivo. La variable de respuesta son las transacciones, mientras que el resto sirve como variables explicativas.
 
-* Modelo SARIMA con errores boosting
+```{r}
+juice(prep(recipe_base)) %>% 
+  relocate(transacciones, .after = fecha) %>% 
+  names() %>% 
+  tibble(variable = .) %>% 
+  DT::datatable()
+  
+```
 
-* Modelo Prophet con errores boosting
+Es importante que todas las variables implementadas en el modelo para realizar la predicción sean conocidas con anticipación, ya que son el insumo del algoritmo predictivo. En caso de no lograr ser conocidas no podrá realizarse la predicción.
 
-* Modelo Prophet con error de tendencia logística boosting
+Así como se describen las características a implementar, también se nombran a continuación los modelos que serán ajustados y posteriormente comparados en su desempeño:
+
+<!-- * Modelo SARIMA con errores boosting -->
+
+<!-- * Modelo Prophet con errores boosting -->
+
+<!-- * Modelo Prophet con error de tendencia logística boosting -->
 
 * Modelo multivariado adaptativo con splines de regresión (MARS)
 
@@ -320,7 +327,7 @@ Los modelos que serán ajustados y posteriormente comparados en su desempeño so
 
 * Regresión regularizada (ELASTICNET)
 
-Estos 5 modelos se ponen a prueba, mostrando los siguientes resultados en el periodo de prueba.
+Estos 4 modelos se ponen a prueba, mostrando los siguientes resultados en el periodo de prueba.
 
 ```{r}
 auto_arima_boost <- arima_boost(
@@ -400,7 +407,7 @@ wfsets <- workflow_set(
     wod                 = recipe_wod
   ),
   models  = list(
-    M_arima_boost       = auto_arima_boost,
+    #M_arima_boost       = auto_arima_boost,
     #M_prophet_boost     = prophet_boost,
     #M_prophet_boost_log = prophet_boost_log,
     M_mars              = mars,
@@ -433,7 +440,8 @@ wffits <- modeltime_wfs_fit(
 modeltime_wfs_forecast(
   .wfs_results = wffits, 
   .serie = model_data2, 
-  .split_prop=split_prop) %>% 
+  .split_prop = split_prop
+  ) %>% 
   mutate(
     .value = exp(.value),
     .conf_lo = exp(.conf_lo),
@@ -444,6 +452,10 @@ modeltime_wfs_forecast(
     .plotly_slider = T
   )
 ```
+
+
+
+
 
 ```{r}
 ranking <- modeltime_wfs_rank(wffits, rank_metric = "mape", minimize = T)
@@ -524,9 +536,9 @@ model_data2 %>% select(fecha, transacciones) %>%
 ```
 
 
-Las métricas principales indican que el error absoluto medio (MAE) es de 30 transacciones, lo cual representa menos de 25% en error relativo (MAPE).
+Las métricas principales indican que el error absoluto medio (MAE) es aproximadamente de 30 transacciones, lo cual representa alrededor de 25% en error relativo (MAPE).
 
-El mejoramiento de este modelo y sus predicciones está sujeto a la acumulación de una mayor cantidad de información con alta calidad. En caso de contar con datos de Google Ads en periodos anteriores a octubre de 2021, será posible maximizar el aprovechamiento de la información. Adicionalmente, se sugiere agregar información relacionada a:
+**El mejoramiento de este modelo y sus predicciones está sujeto a la acumulación de una mayor cantidad de información con alta calidad.** En caso de contar con datos de Google Ads en periodos anteriores a octubre de 2021, será posible maximizar el aprovechamiento de la información. Adicionalmente, se sugiere agregar información relacionada a:
 
 * Calendario de contagios por COVID-19
 
@@ -539,5 +551,85 @@ El mejoramiento de este modelo y sus predicciones está sujeto a la acumulación
 * Serie histórica de paridad dolar-quetzal.
 
 Una vez implementadas estas características, se sugiere realizar un nuevo ajuste de modelos con ensamblaje entre los mejores de ellos, de forma que se logre crear un modelo más robusto que aproveche las ventajas de cada modelo.
+
+
+```{r, eval=FALSE}
+#model_data2 %>% saveRDS("data/model_data.rds")
+#wffits_best %>% saveRDS("models/best_3_models.rds")
+
+# model_data2 <- readRDS("data/model_data.rds")
+# wffits_best <- readRDS("models/best_3_models.rds")
+
+library(rsample)
+library(modeltime)
+
+
+split_data <- model_data2 %>% 
+  select(-gtics_usuarios) %>% 
+  initial_time_split(prop = 0.98)
+
+list_models <- wffits_best %>% split(.$.model_id)
+
+table_forecast <- purrr::map(list_models, function( .wf = list_models){
+  
+  .model_table <- .wf$.fit_model[[1]] %>% 
+    modeltime::modeltime_calibrate(new_data = rsample::testing(split_data)) %>% 
+    dplyr::mutate(.model_desc = "PREDICTION") 
+  })
+
+pred <- dplyr::bind_rows(table_forecast, .id = ".model_id") %>% 
+  modeltime::modeltime_forecast(
+      actual_data = rsample::training(split_data) , 
+      new_data = rsample::testing(split_data) %>% select(-transacciones)
+    )
+
+pred %>% 
+mutate(
+    .value = exp(.value),
+    .conf_lo = exp(.conf_lo),
+    .conf_hi = exp(.conf_hi),
+  ) %>% 
+  plot_modeltime_forecast(
+    .conf_interval_show = FALSE,
+    .plotly_slider = T
+  )
+
+
+library(DT)
+pred %>% 
+mutate(
+    .value = round(exp(.value), 0),
+    .conf_lo = round(exp(.conf_lo), 0),
+    .conf_hi = round(exp(.conf_hi), 0),
+  ) %>% 
+    filter(.key == "prediction") %>%
+    select(
+      date = .index,
+      value = .value,
+      conf_low = .conf_lo,
+      conf_high = .conf_hi,
+      model_id = .model_id,
+    ) %>%
+  arrange(desc(model_id)) %>% 
+    DT::datatable(extensions = "Buttons", options = list(
+      dom = "Bfrtip", 
+      buttons = c('copy', 'pdf', 'print'),
+      initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().header()).css({'background-color': 'orange', 'color': '#fff'});",
+        "}")
+    ))
+```
+
+
+
+
+
+
+
+
+
+
+
 
 

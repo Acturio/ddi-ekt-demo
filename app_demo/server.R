@@ -1,5 +1,6 @@
 library(shiny)
 library(shinydashboard)
+library(shinyjs)
 library(ggplot2)
 library(patchwork)
 library(dplyr)
@@ -7,6 +8,7 @@ library(stringr)
 library(tidyr)
 library(magrittr)
 library(purrr)
+library(lubridate)
 library(DT)
 library(googleVis)
 library(plotly)
@@ -19,6 +21,16 @@ library(sknifedatar)
 library(gt)
 
 shinyServer(function(input, output) {
+
+addCssClass(
+  class = "action-button bttn bttn-float bttn-xs bttn-default bttn-block bttn-no-outline shiny-bound-input",
+  selector = ".btn-file"
+  )
+# addCssClass(
+#   class = "action-button bttn bttn-float bttn-xs bttn-default bttn-block bttn-no-outline shiny-bound-input",
+#   selector = ".form-control"
+#   )
+
 
 data_log <- reactive({
   data_log <- data
@@ -77,7 +89,7 @@ output$univariate_plot <- renderPlotly({
   if (input$plot_type == "Histograma"){
     dist_plot <- data_log() %>%
       ggplot(aes_string(x = input$variable)) +
-      geom_histogram(fill = "orange", color = "black") +
+      geom_histogram(fill = "#f39c12", color = "black") +
       scale_x_continuous(labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
       scale_y_continuous(labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
       geom_vline(aes(xintercept = median(data_log()[,input$variable] %>% pull()),
@@ -99,7 +111,7 @@ output$univariate_plot <- renderPlotly({
 
     dist_plot <- data_log() %>%
       ggplot(aes_string(x = 1, y = input$variable)) +
-      geom_boxplot(fill = "orange", width=0.1) +
+      geom_boxplot(fill = "#f39c12", width=0.1) +
       stat_summary(fun.data=data_summary, color = "red") +
       scale_y_continuous(n.breaks = 10, labels=function(x) format(x, big.mark = ".", scientific = FALSE)) +
       theme(axis.text.x=element_blank(), axis.ticks.x=element_blank()) +
@@ -118,7 +130,7 @@ output$univariate_plot <- renderPlotly({
 
     dist_plot <- data_log() %>%
       ggplot(aes_string(x = 1, y = input$variable)) +
-      geom_violin(fill = "orange",  alpha = 0.6) +
+      geom_violin(fill = "#f39c12",  alpha = 0.6) +
       stat_summary(fun.data=data_summary, color = "red") +
       scale_y_continuous(n.breaks = 10, labels=function(x) format(x, big.mark = ".", scientific = FALSE)) +
       geom_boxplot(width=0.1) +
@@ -176,10 +188,10 @@ output$statistics <- renderDataTable({
 output$calendar <- renderGvis({
 
   data_log() %>%
-    group_by(Date = fecha) %>%
-    summarise(Freq = sum(!!sym(input$variable), na.rm = T)) %>%
-    mutate(cumsum = cumsum(Freq)) %>%
-    filter(cumsum >= 1) %>%
+    dplyr::group_by(Date = fecha) %>%
+    dplyr::summarise(Freq = sum(!!sym(input$variable), na.rm = T)) %>%
+    dplyr::mutate(cumsum = cumsum(Freq)) %>%
+    dplyr::filter(cumsum >= 1) %>%
     gvisCalendar(
       datevar="Date",
       numvar="Freq",
@@ -337,20 +349,100 @@ output$trivariate_yearly_plot <- renderPlot({
     theme(legend.position="bottom")
   })
 
+output$download <- {downloadHandler(
+    filename = function() {
+      paste('sample-data-', Sys.Date(), '.csv', sep='')
+    },
+    content = function(con) {
+      testing_data %>%
+        select(-c(transacciones, yoy, yoy_transacciones)) %>%
+        write.csv(con, row.names = F)
+    }
+  )}
+
 predictions <- reactive({
 
-  table_forecast <- map(list_models, function( .wf = list_models){
+    if (is.null(new_data())){
+      predict_new_data <- testing_data
+    }
+    else ({
+      predict_new_data <- new_data()
+    })
 
+  table_forecast <- map(list_models, function( .wf = list_models){
     .model_table <- .wf$.fit_model[[1]] %>%
       modeltime_calibrate(new_data = testing_data, quiet = FALSE) %>%
-      mutate(.model_desc = "PREDICTION")
+      mutate(.model_desc = "")
+
   })
 
-pred <- bind_rows(table_forecast, .id = ".model_id") %>%
-  modeltime_forecast(
-    actual_data = training_data,
-    new_data = testing_data
+  pred <- bind_rows(table_forecast, .id = ".model_id") %>%
+    modeltime_forecast(
+      actual_data = training_data,
+      new_data = predict_new_data,
+      conf_interval =  input$alpha/100
+      ) %>%
+    mutate(
+    .value = round(exp(.value), 0),
+    .conf_lo = round(exp(.conf_lo), 0),
+    .conf_hi = round(exp(.conf_hi), 0),
   )
 })
+
+output$ts_prediction <- renderPlotly({
+
+  predictions() %>%
+    plot_modeltime_forecast(
+    .conf_interval_show = TRUE,
+    .conf_interval_alpha = 1 - input$alpha/100,
+    .plotly_slider = T
+  )
+})
+
+output$predictions <- renderDataTable({
+
+  predictions() %>%
+    filter(.key == "prediction") %>%
+    select(
+      date = .index,
+      value = .value,
+      conf_low = .conf_lo,
+      conf_high = .conf_hi,
+      model_id = .model_id,
+    ) %>%
+    arrange(desc(model_id)) %>%
+    datatable(options = list(
+      dom = 'Bfrtip',
+      buttons = c('copy', 'pdf', 'print'),
+      initComplete = JS(
+        "function(settings, json) {",
+        "$(this.api().table().header()).css({'background-color': '#f39c12', 'color': '#fff'});",
+        "}")
+    )) %>%
+    DT::formatStyle(columns = 0, target = "row", lineHeight='95%')
+
+})
+
+new_data <- reactive({
+
+  if (is.null(input$file)) return(NULL)
+
+  file <- input$file
+    ext <- tools::file_ext(file$datapath)
+
+  req(file)
+  validate(need(ext == "csv", "Cargue un archivo .csv"))
+
+  read_csv(file$datapath) %>%
+    mutate(
+      fecha = as_date(fecha),
+      yoy = fecha - as.period(dweeks(52))) %>%
+    left_join(
+      data %>% select(fecha, yoy_transacciones = gtics_transacciones),
+      by = c("yoy" = "fecha")
+    )
+
+})
+
 
 })
