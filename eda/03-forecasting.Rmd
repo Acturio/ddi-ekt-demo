@@ -206,13 +206,15 @@ tscv_data %>%
 recipe_time <- model_data2 %>% 
   recipe(transacciones ~ fecha, data = .) %>%
   step_timeseries_signature(fecha) %>% 
-  step_date(fecha, features = c('dow','quarter', 'month', 'semester')) %>% 
+  step_date(fecha, features = c('dow','quarter', 'month', 'semester'),
+            locale = "es_MX.UTF-8") %>% 
   step_lag(transacciones, lag = 365) %>% 
   step_fourier(fecha, period = 365/12, K = 5)
 
 recipe_base <- model_data2 %>% 
   recipe(transacciones~., data=.) %>%
-  step_date(fecha, features = c('dow', 'month')) %>% 
+  step_date(fecha, features = c('dow', 'month'),
+            locale = "C.UTF-8") %>% 
   step_fourier(fecha, period = 365/12, K = 10) %>% 
   step_mutate(yoy_transacciones = log(yoy_transacciones)) %>% 
   step_ts_impute(all_numeric_predictors(), period=365) %>%  
@@ -243,47 +245,47 @@ recipe_base <- model_data2 %>%
   step_interact(~festivo_Sí:adstock_gads_costo_display) %>% 
   step_interact(~festivo_Sí:adstock_gads_costo_vídeo) %>% 
   
-  step_interact(~fecha_dow_lun:adstock_fb_costo_link_clicks) %>%
-  step_interact(~fecha_dow_mar:adstock_fb_costo_link_clicks) %>%
-  step_interact(~fecha_dow_mié:adstock_fb_costo_link_clicks) %>%
-  step_interact(~fecha_dow_jue:adstock_fb_costo_link_clicks) %>%
-  step_interact(~fecha_dow_vie:adstock_fb_costo_link_clicks) %>%
-  step_interact(~fecha_dow_sáb:adstock_fb_costo_link_clicks) %>%
-  
-  step_interact(~fecha_dow_lun:adstock_gads_costo_buscar) %>%
-  step_interact(~fecha_dow_mar:adstock_gads_costo_buscar) %>%
-  step_interact(~fecha_dow_mié:adstock_gads_costo_buscar) %>%
-  step_interact(~fecha_dow_jue:adstock_gads_costo_buscar) %>%
-  step_interact(~fecha_dow_vie:adstock_gads_costo_buscar) %>%
-  step_interact(~fecha_dow_sáb:adstock_gads_costo_buscar) %>%
-  
-  step_interact(~fecha_dow_lun:adstock_fb_costo_reach) %>%
-  step_interact(~fecha_dow_mar:adstock_fb_costo_reach) %>%
-  step_interact(~fecha_dow_mié:adstock_fb_costo_reach) %>%
-  step_interact(~fecha_dow_jue:adstock_fb_costo_reach) %>%
-  step_interact(~fecha_dow_vie:adstock_fb_costo_reach) %>%
-  step_interact(~fecha_dow_sáb:adstock_fb_costo_reach) %>%
-  
-  step_interact(~fecha_dow_lun:adstock_gads_costo_display) %>%
-  step_interact(~fecha_dow_mar:adstock_gads_costo_display) %>%
-  step_interact(~fecha_dow_mié:adstock_gads_costo_display) %>%
-  step_interact(~fecha_dow_jue:adstock_gads_costo_display) %>%
-  step_interact(~fecha_dow_vie:adstock_gads_costo_display) %>%
-  step_interact(~fecha_dow_sáb:adstock_gads_costo_display) %>%
-  
-  step_interact(~fecha_dow_lun:adstock_gads_costo_vídeo) %>%
-  step_interact(~fecha_dow_mar:adstock_gads_costo_vídeo) %>%
-  step_interact(~fecha_dow_mié:adstock_gads_costo_vídeo) %>%
-  step_interact(~fecha_dow_jue:adstock_gads_costo_vídeo) %>%
-  step_interact(~fecha_dow_vie:adstock_gads_costo_vídeo) %>%
-  step_interact(~fecha_dow_sáb:adstock_gads_costo_vídeo) %>%
+  step_interact(~fecha_dow_Mon:adstock_fb_costo_link_clicks) %>%
+  step_interact(~fecha_dow_Tue:adstock_fb_costo_link_clicks) %>%
+  step_interact(~fecha_dow_Wed:adstock_fb_costo_link_clicks) %>%
+  step_interact(~fecha_dow_Thu:adstock_fb_costo_link_clicks) %>%
+  step_interact(~fecha_dow_Fri:adstock_fb_costo_link_clicks) %>%
+  step_interact(~fecha_dow_Sat:adstock_fb_costo_link_clicks) %>%
 
-  step_interact(~fecha_dow_lun:adstock_gads_costo_rendimiento_máximo) %>%
-  step_interact(~fecha_dow_mar:adstock_gads_costo_rendimiento_máximo) %>%
-  step_interact(~fecha_dow_mié:adstock_gads_costo_rendimiento_máximo) %>%
-  step_interact(~fecha_dow_jue:adstock_gads_costo_rendimiento_máximo) %>%
-  step_interact(~fecha_dow_vie:adstock_gads_costo_rendimiento_máximo) %>%
-  step_interact(~fecha_dow_sáb:adstock_gads_costo_rendimiento_máximo) %>%
+  step_interact(~fecha_dow_Mon:adstock_gads_costo_buscar) %>%
+  step_interact(~fecha_dow_Tue:adstock_gads_costo_buscar) %>%
+  step_interact(~fecha_dow_Wed:adstock_gads_costo_buscar) %>%
+  step_interact(~fecha_dow_Thu:adstock_gads_costo_buscar) %>%
+  step_interact(~fecha_dow_Fri:adstock_gads_costo_buscar) %>%
+  step_interact(~fecha_dow_Sat:adstock_gads_costo_buscar) %>%
+
+  step_interact(~fecha_dow_Mon:adstock_fb_costo_reach) %>%
+  step_interact(~fecha_dow_Tue:adstock_fb_costo_reach) %>%
+  step_interact(~fecha_dow_Wed:adstock_fb_costo_reach) %>%
+  step_interact(~fecha_dow_Thu:adstock_fb_costo_reach) %>%
+  step_interact(~fecha_dow_Fri:adstock_fb_costo_reach) %>%
+  step_interact(~fecha_dow_Sat:adstock_fb_costo_reach) %>%
+
+  step_interact(~fecha_dow_Mon:adstock_gads_costo_display) %>%
+  step_interact(~fecha_dow_Tue:adstock_gads_costo_display) %>%
+  step_interact(~fecha_dow_Wed:adstock_gads_costo_display) %>%
+  step_interact(~fecha_dow_Thu:adstock_gads_costo_display) %>%
+  step_interact(~fecha_dow_Fri:adstock_gads_costo_display) %>%
+  step_interact(~fecha_dow_Sat:adstock_gads_costo_display) %>%
+
+  step_interact(~fecha_dow_Mon:adstock_gads_costo_vídeo) %>%
+  step_interact(~fecha_dow_Tue:adstock_gads_costo_vídeo) %>%
+  step_interact(~fecha_dow_Wed:adstock_gads_costo_vídeo) %>%
+  step_interact(~fecha_dow_Thu:adstock_gads_costo_vídeo) %>%
+  step_interact(~fecha_dow_Fri:adstock_gads_costo_vídeo) %>%
+  step_interact(~fecha_dow_Sat:adstock_gads_costo_vídeo) %>%
+
+  step_interact(~fecha_dow_Mon:adstock_gads_costo_rendimiento_máximo) %>%
+  step_interact(~fecha_dow_Tue:adstock_gads_costo_rendimiento_máximo) %>%
+  step_interact(~fecha_dow_Wed:adstock_gads_costo_rendimiento_máximo) %>%
+  step_interact(~fecha_dow_Thu:adstock_gads_costo_rendimiento_máximo) %>%
+  step_interact(~fecha_dow_Fri:adstock_gads_costo_rendimiento_máximo) %>%
+  step_interact(~fecha_dow_Sat:adstock_gads_costo_rendimiento_máximo) %>%
   step_rm(
     yoy, 
     fb_costo_video_views,
@@ -555,25 +557,45 @@ Una vez implementadas estas características, se sugiere realizar un nuevo ajust
 
 ```{r, eval=FALSE}
 #model_data2 %>% saveRDS("data/model_data.rds")
-#wffits_best %>% saveRDS("models/best_3_models.rds")
+#wffits_best %>% saveRDS("models/best_3_models2.rds")
 
 # model_data2 <- readRDS("data/model_data.rds")
 # wffits_best <- readRDS("models/best_3_models.rds")
 
 library(rsample)
 library(modeltime)
-
+library(dplyr)
 
 split_data <- model_data2 %>% 
-  select(-gtics_usuarios) %>% 
+  #select(-gtics_usuarios) %>% 
   initial_time_split(prop = 0.98)
 
 list_models <- wffits_best %>% split(.$.model_id)
 
+library(tidyverse)
+library(fpp3)
+library(tsibble)
+library(forecast)
+library(lubridate)
+library(magrittr)
+library(ranger)
+
+library(tidymodels)
+library(workflowsets)
+library(timetk)
+library(modeltime)
+library(sknifedatar)
+library(gt)
+library(rsample)
+library(modeltime)
+
 table_forecast <- purrr::map(list_models, function( .wf = list_models){
   
+  #library(tidymodels)
+  library(recipes)
+  
   .model_table <- .wf$.fit_model[[1]] %>% 
-    modeltime::modeltime_calibrate(new_data = rsample::testing(split_data)) %>% 
+    modeltime::modeltime_calibrate(new_data = rsample::testing(split_data), quiet = F) %>% 
     dplyr::mutate(.model_desc = "PREDICTION") 
   })
 
