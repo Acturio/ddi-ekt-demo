@@ -298,7 +298,7 @@ output$trivariate_holiday_plot <- renderPlot({
         str_replace(pattern = "^n$", "Número de campañas activas") %>%
         str_to_sentence(),
     ) +
-    theme(legend.position = "none")
+    theme(legend.position = "none", text = element_text(size=15))
 })
 
 output$trivariate_yearly_plot <- renderPlot({
@@ -353,7 +353,7 @@ output$trivariate_yearly_plot <- renderPlot({
       str_replace(pattern = "^n$", "Número de campañas activas") %>%
       str_to_sentence(),
       ) +
-    theme(legend.position="bottom")
+    theme(legend.position="bottom", text = element_text(size=15))
   })
 
 output$download <- {downloadHandler(
