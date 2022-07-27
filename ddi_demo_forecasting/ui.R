@@ -134,7 +134,7 @@ dashboardPage(
             ),
             shinyWidgets::pickerInput(
               inputId = "covariable",
-              label = "Variable de explicativa",
+              label = "Variable explicativa",
               choices = data %>% select_if(is.numeric) %>%  names() %>%
               setdiff("fb_costo_link_clicks"),
               selected = "gads_costo_buscar",
@@ -257,8 +257,8 @@ dashboardPage(
       tabItem(
         tabName = "multi_eda",
         fluidRow(
-          plotOutput("trivariate_holiday_plot"),
-          plotOutput("trivariate_yearly_plot")
+          plotlyOutput("trivariate_holiday_plot"),
+          plotlyOutput("trivariate_yearly_plot")
         )
       ),
       tabItem(

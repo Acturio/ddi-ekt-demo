@@ -33,11 +33,6 @@ addCssClass(
   class = "action-button bttn bttn-float bttn-xs bttn-default bttn-block bttn-no-outline shiny-bound-input",
   selector = ".btn-file"
   )
-# addCssClass(
-#   class = "action-button bttn bttn-float bttn-xs bttn-default bttn-block bttn-no-outline shiny-bound-input",
-#   selector = ".form-control"
-#   )
-
 
 data_log <- reactive({
   data_log <- data
@@ -110,7 +105,8 @@ output$univariate_plot <- renderPlotly({
           str_remove_all(pattern = "_.*") %>%
           str_replace(pattern = "^n$", "Número de campañas activas"),
         y = "Conteo",
-        subtitle =  str_c("Fuente: ", fuente))
+        subtitle =  str_c("Fuente: ", fuente)) +
+      theme_minimal()
 
     dist_plotly <- ggplotly(dist_plot)
   }
@@ -130,7 +126,9 @@ output$univariate_plot <- renderPlotly({
           str_remove_all(pattern = "_.*") %>%
           str_replace(pattern = "^n$", "Número de campañas activas") %>%
           str_to_sentence(),
-        x = "")
+        x = "") +
+      theme_minimal()
+    
     dist_plotly <- ggplotly(dist_plot) %>% plotly::layout(boxgap=0.95)
   }
   else if (input$plot_type == "Violín"){
@@ -150,7 +148,9 @@ output$univariate_plot <- renderPlotly({
           str_remove_all(pattern = "_.*") %>%
           str_replace(pattern = "^n$", "Número de campañas activas") %>%
           str_to_sentence(),
-        x = "")
+        x = "") +
+      theme_minimal()
+    
     dist_plotly <- ggplotly(dist_plot) %>% plotly::layout(boxgap=0.95)
   }
 
@@ -205,9 +205,9 @@ output$calendar <- renderGvis({
       options=list(
         colorAxis="{minvalue:0,
                     colors:['orange','red'] }",
-        title = paste0("Calendario de ", # Sys.getlocale("LC_TIME"),
+        title = paste0("Calendario de ", 
                        str_remove_all(input$variable, "(gads_)|(fb_)|(gtics)") %>%
-                         str_replace_all("_", " ")),
+                       str_replace_all("_", " ")),
         width = 2400,
         calendar = "{yearLabel: { fontName: 'Times-Roman',
              fontSize: 32, color: '#1A8763', bold: true},
@@ -219,7 +219,7 @@ output$calendar <- renderGvis({
 
 })
 
-output$trivariate_holiday_plot <- renderPlot({
+output$trivariate_holiday_plot <- renderPlotly({
 
 
   if(str_sub(input$covariable, 1, 5) == "gtics"){
@@ -278,7 +278,7 @@ output$trivariate_holiday_plot <- renderPlot({
     map_at(vars("x1", "x2"), ~format(round(as.numeric(.x), 1), big.mark = ",")) %>%
     as_tibble() %>%
     unite(x, x1, x2, sep = " - ") %>%
-    ggplot(aes(x = x, y_mean, colour = x)) +
+    ggplot(aes(x = x, y_mean, colour = x, text = paste0("ymin: ", round(ymin, 0), "\n", "ymax: ", round(ymax, 0)))) +
     geom_point() +
     geom_errorbar(aes(ymin = ymin, ymax = ymax ), width = 0.1) +
     scale_y_continuous(labels=function(x) format(x, big.mark = ",", scientific = FALSE))
@@ -287,7 +287,8 @@ output$trivariate_holiday_plot <- renderPlot({
     p <- p + facet_wrap(~ festivo, ncol = 2)
   }
 
-  p +
+  trivariate_holiday_plot <- p +
+    theme_minimal() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
     labs(
       subtitle = if_else(input$split_date, "¿Es una fecha comercial especial?", ""),
@@ -299,9 +300,11 @@ output$trivariate_holiday_plot <- renderPlot({
         str_to_sentence(),
     ) +
     theme(legend.position = "none", text = element_text(size=15))
+  
+  ggplotly(trivariate_holiday_plot)
 })
 
-output$trivariate_yearly_plot <- renderPlot({
+output$trivariate_yearly_plot <- renderPlotly({
 
   if (str_sub(input$covariable, 1, 5) == "gtics"){
       fuente <- "Google Analytics"
@@ -331,11 +334,12 @@ output$trivariate_yearly_plot <- renderPlot({
 
   p <- data_log %>%
     as_tibble() %>%
+    rename(especial = festivo) %>% 
     ggplot(aes_string(
       x = input$covariable,
       y = input$response,
       label = "fecha",
-      colour = "festivo")
+      colour = "especial")
     ) +
     geom_point(alpha = 0.6) +
     geom_smooth(method = "lm")
@@ -344,7 +348,7 @@ output$trivariate_yearly_plot <- renderPlot({
     p <- p + facet_wrap(~ year(fecha), scales = "free_x")
   }
 
-  p +
+  trivariate_yearly_plot <- p +
     labs(
       x = input$covariable,
       y = input$response %>%
@@ -352,8 +356,12 @@ output$trivariate_yearly_plot <- renderPlot({
       str_remove_all(pattern = "_.*") %>%
       str_replace(pattern = "^n$", "Número de campañas activas") %>%
       str_to_sentence(),
+      colour = "Especial"
       ) +
+    theme_minimal() +
     theme(legend.position="bottom", text = element_text(size=15))
+  
+  ggplotly(trivariate_yearly_plot)
   })
 
 output$download <- {downloadHandler(
